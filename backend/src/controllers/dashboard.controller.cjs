@@ -8,16 +8,22 @@ async function getDashboard(req, res) {
       "SELECT COUNT(*)::int AS total FROM clientes WHERE status = 'ATIVO'",
     );
 
-    const totalProdutos = await pool.query('SELECT COUNT(*)::int AS total FROM produtos');
+    // quantidade de cadastros de produtos
+    const totalCadastrosProdutos = await pool.query('SELECT COUNT(*)::int AS total FROM produtos');
+
+    // quantidade total de unidades em estoque
+    const totalProdutos = await pool.query(
+      'SELECT COALESCE(SUM(estoque), 0)::int AS total FROM produtos',
+    );
 
     const produtosAtivos = await pool.query(
       "SELECT COUNT(*)::int AS total FROM produtos WHERE status = 'ATIVO'",
     );
 
+    // valor total do estoque
     const valorEstoque = await pool.query(`
       SELECT COALESCE(SUM(preco * estoque), 0)::numeric(12,2) AS total
       FROM produtos
-      WHERE status = 'ATIVO'
     `);
 
     const estoqueBaixo = await pool.query(`
@@ -44,6 +50,7 @@ async function getDashboard(req, res) {
       cards: {
         totalClientes: totalClientes.rows[0].total,
         clientesAtivos: clientesAtivos.rows[0].total,
+        totalCadastrosProdutos: totalCadastrosProdutos.rows[0].total,
         totalProdutos: totalProdutos.rows[0].total,
         produtosAtivos: produtosAtivos.rows[0].total,
         valorEstoque: Number(valorEstoque.rows[0].total),

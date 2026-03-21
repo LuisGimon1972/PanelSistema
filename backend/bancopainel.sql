@@ -40,11 +40,11 @@ VALUES
   ('Carlos Lima', 'carlos@empresa.com', '11999990003', 'Santos', 'INATIVO')
 ON CONFLICT (email) DO NOTHING;
 
-INSERT INTO produtos (nome, categoria, preco, estoque, status)
+/*DELETE FROM produtos;
+
+INSERT INTO produtos (nome, categoria, preco, estoque)
 VALUES
-  ('Notebook Dell', 'Informática', 3500.00, 8, 'ATIVO'),
-  ('Mouse Sem Fio', 'Acessórios', 120.00, 20, 'ATIVO'),
-  ('Teclado Mecânico', 'Acessórios', 280.00, 4, 'ATIVO'),
-  ('Monitor 24', 'Informática', 899.90, 2, 'ATIVO'),
-  ('Impressora', 'Periféricos', 650.00, 0, 'INATIVO')
-ON CONFLICT DO NOTHING;
+('Produto A', 'Teste', 1000, 2),
+('Produto B', 'Teste', 280, 4),
+('Produto C', 'Teste', 120, 20),
+('Produto D', 'Teste', 1000, 8);*/

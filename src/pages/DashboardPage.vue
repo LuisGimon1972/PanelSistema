@@ -48,7 +48,6 @@
 <script setup>
 import { ref, onMounted, onActivated } from 'vue';
 import axios from 'axios';
-import VueApexCharts from 'vue3-apexcharts';
 
 const dashboard = ref({
   totalClientes: 0,
@@ -71,7 +70,7 @@ async function carregarDashboard() {
 const series = [
   {
     name: 'Produtos',
-    data: [10, 20, 15],
+    data: [15, 20, 15],
   },
 ];
 

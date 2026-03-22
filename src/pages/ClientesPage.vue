@@ -48,7 +48,7 @@
         <q-card-section>
           <q-input v-model="form.nome" label="Nome" />
           <q-input v-model="form.email" label="Email" />
-          <q-input v-model="form.telefone" label="Telefone" />
+          <q-input v-model="form.telefone" label="Telefone" mask="(##)#####.#####" />
           <q-input v-model="form.cidade" label="Cidade" />
         </q-card-section>
 

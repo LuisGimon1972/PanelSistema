@@ -9,11 +9,19 @@ const pool = require('./src/config/db.cjs');
 const dashboardRoutes = require('./src/routes/dashboard.routes.cjs');
 const clientesRoutes = require('./src/routes/clientes.routes.cjs');
 const produtosRoutes = require('./src/routes/produtos.routes.cjs');
+const authRoutes = require('./src/routes/auth.routes.cjs');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/auth', authRoutes);
+
+const authMiddleware = require('./src/middlewares/auth.middleware.cjs');
+
+app.use('/dashboard', authMiddleware, dashboardRoutes);
+app.use('/clientes', authMiddleware, clientesRoutes);
+app.use('/produtos', authMiddleware, produtosRoutes);
 
 async function carregarBanco() {
   try {

@@ -1,17 +1,28 @@
 import type { RouteRecordRaw } from 'vue-router';
+import MainLayout from 'layouts/MainLayout.vue';
+import DashboardPage from 'pages/DashboardPage.vue';
+import ClientesPage from 'pages/ClientesPage.vue';
+import ProdutosPage from 'pages/ProdutosPage.vue';
+import LoginPage from 'pages/LoginPage.vue';
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
+    path: '/login',
+    component: LoginPage,
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
+  {
+    path: '/',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', component: DashboardPage },
+      { path: 'clientes', component: ClientesPage },
+      { path: 'produtos', component: ProdutosPage },
+    ],
+  },
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    redirect: '/login',
   },
 ];
 

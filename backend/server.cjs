@@ -17,11 +17,11 @@ app.use(cors());
 app.use(express.json());
 app.use('/auth', authRoutes);
 
-const authMiddleware = require('./src/middlewares/auth.middleware.cjs');
+/*const authMiddleware = require('./src/middlewares/auth.middleware.cjs');
 
 app.use('/dashboard', authMiddleware, dashboardRoutes);
 app.use('/clientes', authMiddleware, clientesRoutes);
-app.use('/produtos', authMiddleware, produtosRoutes);
+app.use('/produtos', authMiddleware, produtosRoutes);*/
 
 async function carregarBanco() {
   try {

@@ -20,20 +20,18 @@ export default defineRouter(function () {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach((to, _from, next) => {
+  Router.beforeEach((to) => {
     const token = localStorage.getItem('token');
 
     if (to.meta.requiresAuth && !token) {
-      next('/login');
-      return;
+      return '/login';
     }
 
     if (to.path === '/login' && token) {
-      next('/');
-      return;
+      return '/';
     }
 
-    next();
+    return true;
   });
 
   return Router;

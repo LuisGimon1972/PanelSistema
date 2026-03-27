@@ -3,7 +3,7 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Produtos</div>
 
-      <q-btn label="Novo Produto" color="primary" @click="abrirDialog" />
+      <q-btn rounded label="Novo Produto" color="primary" @click="abrirDialog" />
     </div>
 
     <!-- TABELA -->

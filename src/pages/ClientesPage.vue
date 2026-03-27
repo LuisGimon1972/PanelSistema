@@ -3,11 +3,12 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Clientes</div>
 
-      <q-btn label="Novo Cliente" color="primary" @click="abrirDialog" />
+      <q-btn rounded label="Novo Cliente" color="primary" @click="abrirDialog" />
     </div>
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-6">
         <q-input
+          class="input-radius"
           v-model="filtroBusca"
           label="Buscar cliente por nome"
           outlined
@@ -171,3 +172,8 @@ onMounted(() => {
   carregarClientes();
 });
 </script>
+<style scoped>
+.input-radius .q-field__control {
+  border-radius: 10px !important;
+}
+</style>

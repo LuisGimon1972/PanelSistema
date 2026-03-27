@@ -1,74 +1,72 @@
 <template>
   <div class="login-page flex flex-center">
-    <div class="login-wrapper row items-center justify-center full-width q-pa-md">
-      <div class="col-12 col-md-5 col-lg-4">
-        <q-card class="login-card shadow-10">
-          <q-card-section class="text-center q-pb-none">
-            <div class="text-h4 text-weight-bold text-primary">Bem-vindo</div>
-            <div class="text-subtitle1 text-grey-7 q-mt-sm">
-              Acesse o Painel de Gestão Comercial
-            </div>
-          </q-card-section>
+    <q-card class="login-card shadow-6">
+      <q-card-section class="text-center q-pb-xs">
+        <div class="text-h5 text-weight-bold text-primary">Bem-vindo</div>
+        <div class="text-caption text-grey-7 q-mt-xs">Acesse o Painel de Gestão Comercial</div>
+      </q-card-section>
 
-          <q-card-section class="q-pt-lg">
-            <q-form @submit.prevent="fazerLogin" class="q-gutter-md">
-              <q-input
-                v-model="form.email"
-                label="Email"
-                type="email"
-                outlined
-                rounded
-                lazy-rules
-                :rules="[
-                  (val) => !!val || 'Informe o email',
-                  (val) => /.+@.+\..+/.test(val) || 'Email inválido',
-                ]"
-              >
-                <template #prepend>
-                  <q-icon name="mail" color="primary" />
-                </template>
-              </q-input>
+      <q-card-section class="q-pt-sm">
+        <q-form @submit.prevent="fazerLogin" class="q-gutter-sm">
+          <q-input
+            v-model="form.email"
+            label="Email"
+            type="email"
+            outlined
+            dense
+            rounded
+            lazy-rules
+            :rules="[
+              (val) => !!val || 'Informe o email',
+              (val) => /.+@.+\..+/.test(val) || 'Email inválido',
+            ]"
+          >
+            <template #prepend>
+              <q-icon name="mail" color="primary" size="18px" />
+            </template>
+          </q-input>
 
-              <q-input
-                v-model="form.senha"
-                :type="mostrarSenha ? 'text' : 'password'"
-                label="Senha"
-                outlined
-                rounded
-                lazy-rules
-                :rules="[(val) => !!val || 'Informe a senha']"
-              >
-                <template #prepend>
-                  <q-icon name="lock" color="primary" />
-                </template>
+          <q-input
+            v-model="form.senha"
+            :type="mostrarSenha ? 'text' : 'password'"
+            label="Senha"
+            outlined
+            dense
+            rounded
+            lazy-rules
+            :rules="[(val) => !!val || 'Informe a senha']"
+          >
+            <template #prepend>
+              <q-icon name="lock" color="primary" size="18px" />
+            </template>
 
-                <template #append>
-                  <q-icon
-                    :name="mostrarSenha ? 'visibility_off' : 'visibility'"
-                    class="cursor-pointer"
-                    @click="mostrarSenha = !mostrarSenha"
-                  />
-                </template>
-              </q-input>
-
-              <q-btn
-                label="Entrar"
-                type="submit"
-                color="primary"
-                unelevated
-                rounded
-                class="full-width q-py-sm"
-                :loading="loading"
+            <template #append>
+              <q-icon
+                :name="mostrarSenha ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                size="18px"
+                @click="mostrarSenha = !mostrarSenha"
               />
+            </template>
+          </q-input>
 
-              <div class="text-center text-grey-7 text-caption q-mt-sm">
-                Use seu email e senha cadastrados para acessar o sistema
-              </div>
-            </q-form>
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
+          <q-btn
+            label="Entrar"
+            type="submit"
+            color="primary"
+            unelevated
+            rounded
+            dense
+            class="full-width"
+            :loading="loading"
+          />
+
+          <div class="text-center text-grey-7 text-caption q-mt-xs">
+            Use seu email e senha para acessar
+          </div>
+        </q-form>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
 
@@ -123,18 +121,18 @@ async function fazerLogin() {
 </script>
 
 <style scoped>
-.login-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4ecfb 100%);
-}
-
 .login-wrapper {
   min-height: 100vh;
 }
 
-.login-card {
-  border-radius: 24px;
+.login-page {
+  min-height: 100vh;
   padding: 12px;
-  background: white;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 340px;
+  border-radius: 16px;
 }
 </style>

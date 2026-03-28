@@ -43,7 +43,7 @@ async function buscarCliente(req, res) {
 }
 
 async function criarCliente(req, res) {
-  const { nome, email, telefone, cidade, status } = req.body;
+  const { nome, email, telefone, cidade, status, documento } = req.body;
 
   if (!nome || !email) {
     return res.status(400).json({
@@ -54,11 +54,11 @@ async function criarCliente(req, res) {
   try {
     const result = await pool.query(
       `
-      INSERT INTO clientes (nome, email, telefone, cidade, status)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO clientes (nome, email, telefone, cidade, status, documento)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
       `,
-      [nome, email, telefone || null, cidade || null, status || 'ATIVO'],
+      [nome, email, telefone || null, cidade || null, status || 'ATIVO', documento || null],
     );
 
     res.status(201).json({
@@ -76,7 +76,7 @@ async function criarCliente(req, res) {
 
 async function atualizarCliente(req, res) {
   const { id } = req.params;
-  const { nome, email, telefone, cidade, status } = req.body;
+  const { nome, email, telefone, cidade, status, documento } = req.body;
 
   if (!nome || !email) {
     return res.status(400).json({
@@ -88,11 +88,11 @@ async function atualizarCliente(req, res) {
     const result = await pool.query(
       `
       UPDATE clientes
-      SET nome = $1, email = $2, telefone = $3, cidade = $4, status = $5
-      WHERE id = $6
+      SET nome = $1, email = $2, telefone = $3, cidade = $4, status = $5, documento = $6 
+      WHERE id = $7
       RETURNING *
       `,
-      [nome, email, telefone || null, cidade || null, status || 'ATIVO', id],
+      [nome, email, telefone || null, cidade || null, status || 'ATIVO', documento || null, id],
     );
 
     if (result.rows.length === 0) {

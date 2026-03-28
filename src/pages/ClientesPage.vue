@@ -48,12 +48,15 @@
           </div>
         </q-card-section>
 
-        <q-card-section>
-          <q-input v-model="form.nome" label="Nome" />
-          <q-input v-model="form.email" label="Email" />
-          <q-input v-model="form.telefone" label="Telefone" mask="(##)#####.#####" />
-          <q-input v-model="form.cidade" label="Cidade" />
-        </q-card-section>
+        <q-card style="border-radius: 12px; overflow: hidden">
+          <q-card-section>
+            <q-input mask="###.###.###-##" v-model="form.documento" label="Documento" />
+            <q-input v-model="form.nome" label="Nome" />
+            <q-input v-model="form.email" label="Email" />
+            <q-input v-model="form.telefone" label="Telefone" mask="(##)#####-####" />
+            <q-input v-model="form.cidade" label="Cidade" />
+          </q-card-section>
+        </q-card>
 
         <q-card-actions align="right">
           <q-btn flat label="Cancelar" v-close-popup />
@@ -74,6 +77,7 @@ type StatusCliente = 'ATIVO' | 'INATIVO';
 
 interface Cliente {
   id?: number;
+  documento: string;
   nome: string;
   email: string;
   telefone: string;
@@ -94,6 +98,7 @@ const editando = ref<boolean>(false);
 const clienteId = ref<number | null>(null);
 
 const form = ref<Cliente>({
+  documento: '',
   nome: '',
   email: '',
   telefone: '',
@@ -103,6 +108,7 @@ const form = ref<Cliente>({
 const statusOptions: StatusCliente[] = ['ATIVO', 'INATIVO'];
 
 const columns: QTableProps['columns'] = [
+  { name: 'documento', label: 'Documento', field: 'documento', align: 'left' },
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
   { name: 'telefone', label: 'Telefone', field: 'telefone', align: 'left' },
@@ -152,9 +158,9 @@ async function excluirCliente(id?: number): Promise<void> {
   }
 }
 
-// abrir modal
 function abrirDialog(): void {
   form.value = {
+    documento: '',
     nome: '',
     email: '',
     telefone: '',
@@ -165,7 +171,6 @@ function abrirDialog(): void {
   dialog.value = true;
 }
 
-// salvar cliente
 async function salvarCliente(): Promise<void> {
   try {
     if (editando.value && clienteId.value !== null) {
@@ -186,6 +191,7 @@ async function salvarCliente(): Promise<void> {
 
     dialog.value = false;
     form.value = {
+      documento: '',
       nome: '',
       email: '',
       telefone: '',
@@ -212,6 +218,11 @@ onMounted(() => {
 
 <style scoped>
 .input-soft-rounded :deep(.q-field__control) {
-  border-radius: 8px; /* suave */
+  border-radius: 8px;
+}
+
+.card-form {
+  border-radius: 12px !important;
+  overflow: hidden;
 }
 </style>

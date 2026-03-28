@@ -48,7 +48,7 @@ async function buscarProduto(req, res) {
 }
 
 async function criarProduto(req, res) {
-  const { nome, categoria, preco, estoque, status } = req.body;
+  const { nome, categoria, preco, estoque, status, foto } = req.body;
 
   if (!nome) {
     return res.status(400).json({
@@ -59,11 +59,11 @@ async function criarProduto(req, res) {
   try {
     const result = await pool.query(
       `
-      INSERT INTO produtos (nome, categoria, preco, estoque, status)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO produtos (nome, categoria, preco, estoque, status, foto)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
       `,
-      [nome, categoria || null, preco || 0, estoque || 0, status || 'ATIVO'],
+      [nome, categoria || null, preco || 0, estoque || 0, status || 'ATIVO', foto || null],
     );
 
     res.status(201).json({
@@ -77,7 +77,7 @@ async function criarProduto(req, res) {
 
 async function atualizarProduto(req, res) {
   const { id } = req.params;
-  const { nome, categoria, preco, estoque, status } = req.body;
+  const { nome, categoria, preco, estoque, status, foto } = req.body;
 
   if (!nome) {
     return res.status(400).json({
@@ -89,11 +89,11 @@ async function atualizarProduto(req, res) {
     const result = await pool.query(
       `
       UPDATE produtos
-      SET nome = $1, categoria = $2, preco = $3, estoque = $4, status = $5
-      WHERE id = $6
+      SET nome = $1, categoria = $2, preco = $3, estoque = $4, status = $5, foto = $6
+      WHERE id = $7
       RETURNING *
       `,
-      [nome, categoria || null, preco || 0, estoque || 0, status || 'ATIVO', id],
+      [nome, categoria || null, preco || 0, estoque || 0, status || 'ATIVO', foto || null, id],
     );
 
     if (result.rows.length === 0) {

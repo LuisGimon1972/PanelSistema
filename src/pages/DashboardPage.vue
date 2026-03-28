@@ -2,7 +2,7 @@
   <q-page padding>
     <div class="text-h5 q-mb-md">Dashboard</div>
 
-    <div class="row q-col-gutter-md">
+    <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-md-3">
         <q-card class="bg-blue-1">
           <q-card-section>
@@ -26,7 +26,7 @@
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Valor Estoque</div>
             <div class="text-h5 text-orange-9">
-              R$ {{ Number(dashboard.valorEstoque).toFixed(2) }}
+              R$ {{ dashboard.valorEstoque.toFixed(2) }}
             </div>
           </q-card-section>
         </q-card>
@@ -41,15 +41,35 @@
         </q-card>
       </div>
     </div>
-    <apexchart type="bar" height="300" :options="chartOptions" :series="series" />
+
+    <apexchart
+      type="bar"
+      height="300"
+      :options="chartOptions"
+      :series="series"
+    />
   </q-page>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onActivated } from 'vue';
 import axios from 'axios';
+import type { ApexOptions } from 'apexcharts';
 
-const dashboard = ref({
+interface Dashboard {
+  totalClientes: number;
+  clientesAtivos: number;
+  totalProdutos: number;
+  produtosAtivos: number;
+  valorEstoque: number;
+  estoqueBaixo: number;
+}
+
+interface DashboardApiResponse {
+  cards: Dashboard;
+}
+
+const dashboard = ref<Dashboard>({
   totalClientes: 0,
   clientesAtivos: 0,
   totalProdutos: 0,
@@ -58,36 +78,45 @@ const dashboard = ref({
   estoqueBaixo: 0,
 });
 
-async function carregarDashboard() {
-  try {
-    const { data } = await axios.get('http://localhost:3000/dashboard');
-    dashboard.value = data.cards;
-  } catch (err) {
-    console.error('Erro ao carregar dashboard:', err);
-  }
-}
-
-const series = [
+const series = ref([
   {
     name: 'Produtos',
     data: [15, 20, 15],
   },
-];
+]);
 
-const chartOptions = {
+const chartOptions = ref<ApexOptions>({
   chart: {
     id: 'basic-bar',
+    toolbar: {
+      show: false,
+    },
   },
   xaxis: {
     categories: ['Acessórios', 'Informática', 'Periféricos'],
   },
-};
+  dataLabels: {
+    enabled: false,
+  },
+});
+
+async function carregarDashboard(): Promise<void> {
+  try {
+    const { data } = await axios.get<DashboardApiResponse>(
+      'http://localhost:3000/dashboard'
+    );
+
+    dashboard.value = data.cards;
+  } catch (error) {
+    console.error('Erro ao carregar dashboard:', error);
+  }
+}
 
 onMounted(() => {
-  carregarDashboard();
+  void carregarDashboard();
 });
 
 onActivated(() => {
-  carregarDashboard();
+  void carregarDashboard();
 });
 </script>

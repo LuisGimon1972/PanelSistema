@@ -3,12 +3,13 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Clientes</div>
 
-      <q-btn rounded label="Novo Cliente" color="primary" @click="abrirDialog" />
+      <q-btn label="Novo Cliente" color="primary" @click="abrirDialog" />
     </div>
+
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-6">
         <q-input
-          class="input-radius"
+          class="input-soft-rounded"
           v-model="filtroBusca"
           label="Buscar cliente por nome"
           outlined
@@ -19,8 +20,9 @@
 
       <div class="col-12 col-md-3">
         <q-select
+          class="input-soft-rounded"
           v-model="filtroStatus"
-          :options="['ATIVO', 'INATIVO']"
+          :options="statusOptions"
           label="Status"
           outlined
           clearable
@@ -29,21 +31,21 @@
       </div>
     </div>
 
-    <!-- TABELA -->
     <q-table :rows="clientes" :columns="columns" row-key="id" flat bordered>
       <template v-slot:body-cell-acoes="props">
         <q-td>
           <q-btn icon="edit" size="sm" flat color="primary" @click="editarCliente(props.row)" />
-
           <q-btn icon="delete" size="sm" flat color="red" @click="excluirCliente(props.row.id)" />
         </q-td>
       </template>
     </q-table>
-    <!-- DIALOG -->
+
     <q-dialog v-model="dialog">
       <q-card style="min-width: 400px">
         <q-card-section>
-          <div class="text-h6">Novo Cliente</div>
+          <div class="text-h6">
+            {{ editando ? 'Editar Cliente' : 'Novo Cliente' }}
+          </div>
         </q-card-section>
 
         <q-card-section>
@@ -62,37 +64,55 @@
   </q-page>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { Notify } from 'quasar';
+import type { QTableProps } from 'quasar';
 
-const filtroBusca = ref('');
-const filtroStatus = ref('');
+type StatusCliente = 'ATIVO' | 'INATIVO';
 
-const clientes = ref([]);
-const dialog = ref(false);
-const editando = ref(false);
-const clienteId = ref(null);
+interface Cliente {
+  id?: number;
+  nome: string;
+  email: string;
+  telefone: string;
+  cidade: string;
+  status?: StatusCliente;
+}
 
-const form = ref({
+interface ApiErrorResponse {
+  erro?: string;
+}
+
+const filtroBusca = ref<string>('');
+const filtroStatus = ref<StatusCliente | ''>('');
+
+const clientes = ref<Cliente[]>([]);
+const dialog = ref<boolean>(false);
+const editando = ref<boolean>(false);
+const clienteId = ref<number | null>(null);
+
+const form = ref<Cliente>({
   nome: '',
   email: '',
   telefone: '',
   cidade: '',
 });
 
-const columns = [
-  { name: 'nome', label: 'Nome', field: 'nome' },
-  { name: 'email', label: 'Email', field: 'email' },
-  { name: 'telefone', label: 'Telefone', field: 'telefone' },
-  { name: 'cidade', label: 'Cidade', field: 'cidade' },
-  { name: 'acoes', label: 'Ações', field: 'acoes' },
+const statusOptions: StatusCliente[] = ['ATIVO', 'INATIVO'];
+
+const columns: QTableProps['columns'] = [
+  { name: 'nome', label: 'Nome', field: 'nome', align: 'left' },
+  { name: 'email', label: 'Email', field: 'email', align: 'left' },
+  { name: 'telefone', label: 'Telefone', field: 'telefone', align: 'left' },
+  { name: 'cidade', label: 'Cidade', field: 'cidade', align: 'left' },
+  { name: 'acoes', label: 'Ações', field: 'acoes', align: 'left' },
 ];
 
 // carregar lista
-async function carregarClientes() {
-  const { data } = await axios.get('http://localhost:3000/clientes', {
+async function carregarClientes(): Promise<void> {
+  const { data } = await axios.get<Cliente[]>('http://localhost:3000/clientes', {
     params: {
       busca: filtroBusca.value || '',
       status: filtroStatus.value || '',
@@ -102,14 +122,15 @@ async function carregarClientes() {
   clientes.value = data;
 }
 
-function editarCliente(cliente) {
+function editarCliente(cliente: Cliente): void {
   form.value = { ...cliente };
-  clienteId.value = cliente.id;
+  clienteId.value = cliente.id ?? null;
   editando.value = true;
   dialog.value = true;
 }
 
-async function excluirCliente(id) {
+async function excluirCliente(id?: number): Promise<void> {
+  if (id == null) return;
   if (!confirm('Deseja excluir este cliente?')) return;
 
   try {
@@ -121,23 +142,33 @@ async function excluirCliente(id) {
     });
 
     await carregarClientes();
-  } catch (err) {
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: ApiErrorResponse } };
+
     Notify.create({
       type: 'negative',
-      message: err.response?.data?.erro || 'Erro ao excluir cliente',
+      message: error.response?.data?.erro || 'Erro ao excluir cliente',
     });
   }
 }
 
 // abrir modal
-function abrirDialog() {
+function abrirDialog(): void {
+  form.value = {
+    nome: '',
+    email: '',
+    telefone: '',
+    cidade: '',
+  };
+  clienteId.value = null;
+  editando.value = false;
   dialog.value = true;
 }
 
 // salvar cliente
-async function salvarCliente() {
+async function salvarCliente(): Promise<void> {
   try {
-    if (editando.value) {
+    if (editando.value && clienteId.value !== null) {
       await axios.put(`http://localhost:3000/clientes/${clienteId.value}`, form.value);
 
       Notify.create({
@@ -154,26 +185,33 @@ async function salvarCliente() {
     }
 
     dialog.value = false;
-    form.value = { nome: '', email: '', telefone: '', cidade: '' };
+    form.value = {
+      nome: '',
+      email: '',
+      telefone: '',
+      cidade: '',
+    };
     editando.value = false;
     clienteId.value = null;
 
     await carregarClientes();
-  } catch (err) {
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: ApiErrorResponse } };
+
     Notify.create({
       type: 'negative',
-      message: err.response?.data?.erro || 'Erro ao salvar cliente',
+      message: error.response?.data?.erro || 'Erro ao salvar cliente',
     });
   }
 }
 
-// init
 onMounted(() => {
-  carregarClientes();
+  void carregarClientes();
 });
 </script>
+
 <style scoped>
-.input-radius .q-field__control {
-  border-radius: 10px !important;
+.input-soft-rounded :deep(.q-field__control) {
+  border-radius: 8px; /* suave */
 }
 </style>

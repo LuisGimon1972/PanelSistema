@@ -6,19 +6,20 @@
       <q-btn label="Novo Cliente" color="primary" @click="abrirDialog" />
     </div>
 
-    <div class="row q-col-gutter-md q-mb-md">
-      <div class="col-12 col-md-6">
+    <div class="row q-col-gutter-md q-mb-md justify-end">
+      <div class="col-12 col-md-3">
         <q-input
           class="input-soft-rounded"
           v-model="filtroBusca"
           label="Buscar cliente por nome"
           outlined
           clearable
+          dense
           @update:model-value="carregarClientes"
         />
       </div>
 
-      <div class="col-12 col-md-3">
+      <div class="col-12 col-md-2">
         <q-select
           class="input-soft-rounded"
           v-model="filtroStatus"
@@ -26,6 +27,7 @@
           label="Status"
           outlined
           clearable
+          dense
           @update:model-value="carregarClientes"
         />
       </div>

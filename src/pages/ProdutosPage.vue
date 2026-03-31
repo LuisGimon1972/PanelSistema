@@ -5,6 +5,32 @@
 
       <q-btn label="Novo Produto" color="primary" @click="abrirDialog" />
     </div>
+    <div class="row q-col-gutter-md q-mb-md justify-end">
+      <div class="col-12 col-md-3">
+        <q-input
+          class="input-soft-rounded"
+          v-model="filtroBusca"
+          label="Buscar produto por nome"
+          outlined
+          clearable
+          dense
+          @update:model-value="carregarProdutos"
+        />
+      </div>
+
+      <div class="col-12 col-md-2">
+        <q-select
+          class="input-soft-rounded"
+          v-model="filtroCategoria"
+          :options="categoriasOptions"
+          label="Categoria"
+          outlined
+          clearable
+          dense
+          @update:model-value="carregarProdutos"
+        />
+      </div>
+    </div>
 
     <q-table :rows="produtos" :columns="columns" row-key="id" flat bordered>
       <template v-slot:body-cell-foto="props">
@@ -47,7 +73,8 @@
 
             <q-file
               v-model="fotoArquivo"
-              label="Selecionar imagem"
+              class="text-normal q-mb-sm"
+              label="Selecionar imagem (formatos: .JPG, .JPEG, .PNG ou .WEBP)"
               outlined
               clearable
               accept=".jpg,.jpeg,.png,.webp"
@@ -91,6 +118,16 @@
               >
                 Sem imagem
               </div>
+            </div>
+            <div class="q-mt-sm row justify-center q-gutter-sm">
+              <q-btn
+                v-if="previewFoto || form.foto"
+                flat
+                color="negative"
+                icon="delete"
+                label="Remover foto"
+                @click="removerFoto"
+              />
             </div>
           </q-card>
         </q-card-section>
@@ -136,6 +173,7 @@ const produtoId = ref<number | null>(null);
 
 const fotoArquivo = ref<File | null>(null);
 const previewFoto = ref<string>('');
+const fotoRemovida = ref<boolean>(false);
 
 const form = ref<ProdutoForm>({
   nome: '',
@@ -145,18 +183,29 @@ const form = ref<ProdutoForm>({
   foto: '',
 });
 
+const filtroBusca = ref<string>('');
+const filtroCategoria = ref<string>('');
+
+const categoriasOptions = ref<string[]>([
+  'Eletrônicos',
+  'Roupas',
+  'Alimentos',
+  'Bebidas',
+  'Limpieza',
+]);
+
 const columns: QTableProps['columns'] = [
   { name: 'foto', label: 'Foto', field: 'foto', align: 'left' },
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' },
   { name: 'categoria', label: 'Categoria', field: 'categoria', align: 'left' },
   {
     name: 'preco',
-    label: 'Preço',
+    label: 'Preço Venda',
     field: 'preco',
-    align: 'left',
+    align: 'right',
     format: (val: number | string) => `R$ ${Number(val).toFixed(2)}`,
   },
-  { name: 'estoque', label: 'Estoque', field: 'estoque', align: 'left' },
+  { name: 'estoque', label: 'Estoque', field: 'estoque', align: 'right' },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'left' },
 ];
 
@@ -168,11 +217,18 @@ watch(fotoArquivo, (file) => {
 
   if (file) {
     previewFoto.value = URL.createObjectURL(file);
+    fotoRemovida.value = false;
   }
 });
 
 async function carregarProdutos(): Promise<void> {
-  const { data } = await axios.get<Produto[]>(`${API_URL}/produtos`);
+  const { data } = await axios.get<Produto[]>(`${API_URL}/produtos`, {
+    params: {
+      busca: filtroBusca.value,
+      categoria: filtroCategoria.value,
+    },
+  });
+
   produtos.value = data;
 }
 
@@ -186,6 +242,7 @@ function resetFormulario(): void {
   };
 
   fotoArquivo.value = null;
+  fotoRemovida.value = false;
 
   if (previewFoto.value) {
     URL.revokeObjectURL(previewFoto.value);
@@ -222,7 +279,22 @@ function editarProduto(produto: Produto): void {
   dialog.value = true;
 }
 
+function removerFoto(): void {
+  if (previewFoto.value) {
+    URL.revokeObjectURL(previewFoto.value);
+    previewFoto.value = '';
+  }
+
+  fotoArquivo.value = null;
+  form.value.foto = '';
+  fotoRemovida.value = true;
+}
+
 async function uploadFoto(): Promise<string> {
+  if (fotoRemovida.value) {
+    return '';
+  }
+
   if (!fotoArquivo.value) {
     return form.value.foto || '';
   }

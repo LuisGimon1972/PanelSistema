@@ -1,0 +1,516 @@
+<template>
+  <q-page padding class="bg-grey-2">
+    <div class="row q-col-gutter-md items-start">
+      <!-- BLOCO ESQUERDO -->
+      <div class="col-12 col-md-8">
+        <q-card flat bordered class="q-mb-md">
+          <q-card-section>
+            <div class="text-h6">{{ tituloPagina }}</div>
+            <div class="text-caption text-grey-7">
+              Monte o pedido de forma rápida e acompanhe o total em tempo real
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- CLIENTE -->
+        <q-card flat bordered class="q-mb-md">
+          <q-card-section>
+            <div class="text-subtitle1 text-weight-medium q-mb-md">Cliente</div>
+
+            <q-select
+              v-model="clienteSelecionado"
+              :options="clientesOptions"
+              option-label="label"
+              option-value="value"
+              emit-value
+              map-options
+              outlined
+              use-input
+              input-debounce="300"
+              label="Buscar cliente"
+              @filter="filtrarClientes"
+            />
+          </q-card-section>
+        </q-card>
+
+        <!-- ADICIONAR PRODUTO -->
+        <q-card flat bordered class="q-mb-md">
+          <q-card-section>
+            <div class="text-subtitle1 text-weight-medium q-mb-md">Adicionar Produto</div>
+
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <q-select
+                  v-model="produtoSelecionado"
+                  :options="produtosOptions"
+                  option-label="label"
+                  option-value="value"
+                  emit-value
+                  map-options
+                  outlined
+                  use-input
+                  input-debounce="300"
+                  label="Buscar produto"
+                  @filter="filtrarProdutos"
+                />
+              </div>
+
+              <div class="col-12 col-md-3">
+                <q-input
+                  v-model.number="quantidade"
+                  type="number"
+                  min="1"
+                  outlined
+                  label="Quantidade"
+                />
+              </div>
+
+              <div class="col-12 col-md-3 flex flex-center">
+                <q-btn
+                  color="primary"
+                  icon="add_shopping_cart"
+                  label="Adicionar"
+                  class="full-width"
+                  @click="adicionarItem"
+                />
+              </div>
+            </div>
+
+            <div v-if="produtoAtual" class="q-mt-md q-pa-sm rounded-borders bg-blue-1 text-grey-9">
+              <div><strong>Produto:</strong> {{ produtoAtual.nome }}</div>
+              <div><strong>Preço:</strong> {{ formatarMoeda(produtoAtual.preco) }}</div>
+              <div><strong>Estoque:</strong> {{ produtoAtual.estoque }}</div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- ITENS -->
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-subtitle1 text-weight-medium q-mb-md">Itens do Pedido</div>
+
+            <q-table
+              flat
+              bordered
+              :rows="itens"
+              :columns="columns"
+              row-key="produto_id"
+              no-data-label="Nenhum item adicionado"
+            >
+              <template #body-cell-preco="props">
+                <q-td :props="props">
+                  {{ formatarMoeda(props.row.preco) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-subtotal="props">
+                <q-td :props="props">
+                  {{ formatarMoeda(props.row.subtotal) }}
+                </q-td>
+              </template>
+
+              <template #body-cell-acoes="props">
+                <q-td :props="props">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="negative"
+                    icon="delete"
+                    @click="removerItem(props.row.produto_id)"
+                  />
+                </q-td>
+              </template>
+            </q-table>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- BLOCO DIREITO -->
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="sticky-card">
+          <q-card-section>
+            <div class="text-h6 q-mb-md">Resumo da Venda</div>
+
+            <div class="q-mb-sm">
+              <div class="text-caption text-grey-7">Cliente</div>
+              <div class="text-subtitle2">
+                {{ nomeClienteSelecionado || 'Não selecionado' }}
+              </div>
+            </div>
+
+            <q-separator class="q-my-md" />
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">Itens</span>
+              <strong>{{ totalItens }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">Produtos diferentes</span>
+              <strong>{{ itens.length }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-md">
+              <span class="text-grey-7">Total</span>
+              <strong class="text-primary text-h6">
+                {{ formatarMoeda(totalPedido) }}
+              </strong>
+            </div>
+
+            <q-btn
+              color="positive"
+              icon="save"
+              label="Salvar Pedido"
+              class="full-width"
+              :disable="!podeSalvar"
+              :loading="salvando"
+              @click="salvarPedido"
+            />
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Notify } from 'quasar';
+import { api } from 'boot/axios';
+import axios from 'axios';
+
+const tituloPagina = computed(() => (pedidoId.value ? 'Editar Pedido' : 'Novo Pedido'));
+
+const route = useRoute();
+const router = useRouter();
+
+const pedidoId = computed(() => (route.params.id ? Number(route.params.id) : null));
+
+interface PedidoItemApi {
+  id: number;
+  produto_id: number;
+  nome_produto: string;
+  preco_unitario: number;
+  quantidade: number;
+  subtotal: number;
+}
+
+interface PedidoDetalhe {
+  id: number;
+  cliente_id: number;
+  cliente_nome: string;
+  data: string;
+  status: string;
+  total: number;
+  itens: PedidoItemApi[];
+}
+
+interface Cliente {
+  id: number;
+  nome: string;
+  email: string;
+  telefone?: string;
+  cidade?: string;
+}
+
+interface Produto {
+  id: number;
+  nome: string;
+  categoria?: string;
+  preco: number;
+  estoque: number;
+  status?: string;
+}
+
+interface ItemPedido {
+  produto_id: number;
+  nome: string;
+  preco: number;
+  quantidade: number;
+  subtotal: number;
+}
+
+interface OptionItem {
+  label: string;
+  value: number;
+}
+
+const clientes = ref<Cliente[]>([]);
+const produtos = ref<Produto[]>([]);
+
+const clientesOptions = ref<OptionItem[]>([]);
+const produtosOptions = ref<OptionItem[]>([]);
+
+const clienteSelecionado = ref<number | null>(null);
+const produtoSelecionado = ref<number | null>(null);
+const quantidade = ref<number>(1);
+
+const itens = ref<ItemPedido[]>([]);
+const salvando = ref(false);
+
+const columns = [
+  { name: 'nome', label: 'Produto', field: 'nome', align: 'left' as const },
+  { name: 'preco', label: 'Preço', field: 'preco', align: 'left' as const },
+  { name: 'quantidade', label: 'Qtd.', field: 'quantidade', align: 'left' as const },
+  { name: 'subtotal', label: 'Subtotal', field: 'subtotal', align: 'left' as const },
+  { name: 'acoes', label: 'Ações', field: 'acoes', align: 'center' as const },
+];
+
+const produtoAtual = computed(
+  () => produtos.value.find((p) => p.id === produtoSelecionado.value) || null,
+);
+
+const clienteAtual = computed(
+  () => clientes.value.find((c) => c.id === clienteSelecionado.value) || null,
+);
+
+const nomeClienteSelecionado = computed(() => clienteAtual.value?.nome || '');
+
+const totalItens = computed(() => itens.value.reduce((acc, item) => acc + item.quantidade, 0));
+
+const totalPedido = computed(() => itens.value.reduce((acc, item) => acc + item.subtotal, 0));
+
+const podeSalvar = computed(() => !!clienteSelecionado.value && itens.value.length > 0);
+
+function formatarMoeda(valor: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(valor || 0));
+}
+
+async function carregarClientes() {
+  const { data } = await api.get<Cliente[]>('/clientes');
+  clientes.value = data;
+  clientesOptions.value = data.map((cliente) => ({
+    label: cliente.nome,
+    value: cliente.id,
+  }));
+}
+
+async function carregarProdutos() {
+  const { data } = await api.get<Produto[]>('/produtos');
+  produtos.value = data;
+  produtosOptions.value = data.map((produto) => ({
+    label: `${produto.nome} (${produto.estoque} em estoque)`,
+    value: produto.id,
+  }));
+}
+
+function filtrarClientes(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    const termo = val.toLowerCase();
+    clientesOptions.value = clientes.value
+      .filter((cliente) => cliente.nome.toLowerCase().includes(termo))
+      .map((cliente) => ({
+        label: cliente.nome,
+        value: cliente.id,
+      }));
+  });
+}
+
+function filtrarProdutos(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    const termo = val.toLowerCase();
+    produtosOptions.value = produtos.value
+      .filter((produto) => produto.nome.toLowerCase().includes(termo))
+      .map((produto) => ({
+        label: `${produto.nome} (${produto.estoque} em estoque)`,
+        value: produto.id,
+      }));
+  });
+}
+
+function adicionarItem() {
+  if (!produtoSelecionado.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'Selecione um produto',
+    });
+    return;
+  }
+
+  if (!quantidade.value || quantidade.value <= 0) {
+    Notify.create({
+      type: 'warning',
+      message: 'Informe uma quantidade válida',
+    });
+    return;
+  }
+
+  const produto = produtos.value.find((p) => p.id === produtoSelecionado.value);
+
+  if (!produto) {
+    Notify.create({
+      type: 'negative',
+      message: 'Produto não encontrado',
+    });
+    return;
+  }
+
+  if (quantidade.value > produto.estoque) {
+    Notify.create({
+      type: 'negative',
+      message: `Estoque insuficiente. Disponível: ${produto.estoque}`,
+    });
+    return;
+  }
+
+  const itemExistente = itens.value.find((item) => item.produto_id === produto.id);
+
+  if (itemExistente) {
+    const novaQuantidade = itemExistente.quantidade + quantidade.value;
+
+    if (novaQuantidade > produto.estoque) {
+      Notify.create({
+        type: 'negative',
+        message: `Quantidade total excede o estoque disponível (${produto.estoque})`,
+      });
+      return;
+    }
+
+    itemExistente.quantidade = novaQuantidade;
+    itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
+  } else {
+    itens.value.push({
+      produto_id: produto.id,
+      nome: produto.nome,
+      preco: Number(produto.preco),
+      quantidade: quantidade.value,
+      subtotal: Number(produto.preco) * quantidade.value,
+    });
+  }
+
+  produtoSelecionado.value = null;
+  quantidade.value = 1;
+
+  Notify.create({
+    type: 'positive',
+    message: 'Produto adicionado ao pedido',
+  });
+}
+
+function removerItem(produtoId: number) {
+  itens.value = itens.value.filter((item) => item.produto_id !== produtoId);
+
+  Notify.create({
+    type: 'info',
+    message: 'Item removido',
+  });
+}
+
+async function salvarPedido() {
+  if (!clienteSelecionado.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'Selecione um cliente',
+    });
+    return;
+  }
+
+  if (itens.value.length === 0) {
+    Notify.create({
+      type: 'warning',
+      message: 'Adicione pelo menos um item',
+    });
+    return;
+  }
+
+  salvando.value = true;
+
+  try {
+    const payload = {
+      cliente_id: clienteSelecionado.value,
+      itens: itens.value.map((item) => ({
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+      })),
+    };
+
+    if (pedidoId.value) {
+      await api.put(`/pedidos/${pedidoId.value}`, payload);
+
+      Notify.create({
+        type: 'positive',
+        message: 'Pedido atualizado com sucesso',
+      });
+    } else {
+      await api.post('/pedidos', payload);
+
+      Notify.create({
+        type: 'positive',
+        message: 'Pedido salvo com sucesso',
+      });
+    }
+
+    clienteSelecionado.value = null;
+    produtoSelecionado.value = null;
+    quantidade.value = 1;
+    itens.value = [];
+
+    await carregarProdutos();
+    await router.push('/pedidos/lista');
+  } catch (error: unknown) {
+    let mensagem = 'Erro ao salvar pedido';
+
+    if (axios.isAxiosError(error)) {
+      mensagem = error.response?.data?.erro || mensagem;
+    }
+
+    Notify.create({
+      type: 'negative',
+      message: mensagem,
+    });
+  } finally {
+    salvando.value = false;
+  }
+}
+
+async function carregarPedidoEdicao() {
+  if (!pedidoId.value) return;
+
+  try {
+    const { data } = await api.get<PedidoDetalhe>(`/pedidos/${pedidoId.value}`);
+
+    clienteSelecionado.value = data.cliente_id;
+
+    itens.value = data.itens.map((item) => ({
+      produto_id: item.produto_id,
+      nome: item.nome_produto,
+      preco: Number(item.preco_unitario),
+      quantidade: Number(item.quantidade),
+      subtotal: Number(item.subtotal),
+    }));
+  } catch (error: unknown) {
+    let mensagem = 'Erro ao carregar pedido para edição';
+
+    if (axios.isAxiosError(error)) {
+      mensagem = error.response?.data?.erro || mensagem;
+    }
+
+    Notify.create({
+      type: 'negative',
+      message: mensagem,
+    });
+
+    await router.push('/pedidos/lista');
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([carregarClientes(), carregarProdutos()]);
+
+  if (pedidoId.value) {
+    await carregarPedidoEdicao();
+  }
+});
+</script>
+
+<style scoped>
+.sticky-card {
+  position: sticky;
+  top: 20px;
+}
+</style>

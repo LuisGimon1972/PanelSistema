@@ -18,6 +18,9 @@ const routes: RouteRecordRaw[] = [
       { path: '', component: DashboardPage },
       { path: 'clientes', component: ClientesPage },
       { path: 'produtos', component: ProdutosPage },
+      { path: 'pedidos', component: () => import('pages/PedidosPage.vue') },
+      { path: 'pedidos/lista', component: () => import('pages/PedidosListaPage.vue') },
+      { path: 'pedidos/editar/:id', component: () => import('pages/PedidosPage.vue') },
     ],
   },
   {

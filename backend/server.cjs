@@ -10,6 +10,7 @@ const dashboardRoutes = require('./src/routes/dashboard.routes.cjs');
 const clientesRoutes = require('./src/routes/clientes.routes.cjs');
 const produtosRoutes = require('./src/routes/produtos.routes.cjs');
 const authRoutes = require('./src/routes/auth.routes.cjs');
+const pedidosRoutes = require('./src/routes/pedidos.routes.cjs');
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/uploads', express.static('uploads'));
+app.use('/pedidos', pedidosRoutes);
 
 /*const authMiddleware = require('./src/middlewares/auth.middleware.cjs');
 

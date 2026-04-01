@@ -44,6 +44,20 @@
           </q-item-section>
           <q-item-section>Produtos</q-item-section>
         </q-item>
+
+        <q-item clickable to="/pedidos">
+          <q-item-section avatar>
+            <q-icon name="add_shopping_cart" />
+          </q-item-section>
+          <q-item-section>Novo Pedido</q-item-section>
+        </q-item>
+
+        <q-item clickable to="/pedidos/lista">
+          <q-item-section avatar>
+            <q-icon name="receipt_long" />
+          </q-item-section>
+          <q-item-section>Listagem de Pedidos</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 

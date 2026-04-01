@@ -32,6 +32,25 @@ CREATE TABLE IF NOT EXISTS produtos (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS pedidos (
+  id SERIAL PRIMARY KEY,
+  cliente_id INTEGER REFERENCES clientes(id),
+  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(20) DEFAULT 'ABERTO',
+  total NUMERIC(12,2) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS pedido_itens (
+  id SERIAL PRIMARY KEY,
+  pedido_id INTEGER REFERENCES pedidos(id) ON DELETE CASCADE,
+  produto_id INTEGER REFERENCES produtos(id),
+  nome_produto VARCHAR(150),
+  preco_unitario NUMERIC(12,2),
+  quantidade INTEGER,
+  subtotal NUMERIC(12,2)
+);
+
 CREATE INDEX IF NOT EXISTS idx_clientes_nome
 ON clientes (nome);
 

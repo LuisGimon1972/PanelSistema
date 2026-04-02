@@ -12,6 +12,34 @@
           </q-card-section>
         </q-card>
 
+        <q-card flat bordered class="q-mb-md">
+          <q-card-section>
+            <div class="row q-col-gutter-md items-center">
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle1 text-weight-medium q-mb-sm">Status do Pedido</div>
+
+                <q-select
+                  v-model="statusPedido"
+                  :options="statusOptions"
+                  emit-value
+                  map-options
+                  outlined
+                  label="Status"
+                  :disable="!pedidoId"
+                />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="text-caption text-grey-7 q-mb-sm">Situação atual</div>
+
+                <q-badge :color="getStatusColor(statusPedido)" class="text-subtitle2 q-pa-sm">
+                  {{ statusPedido }}
+                </q-badge>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
         <!-- CLIENTE -->
         <q-card flat bordered class="q-mb-md">
           <q-card-section>
@@ -186,7 +214,28 @@ const tituloPagina = computed(() => (pedidoId.value ? 'Editar Pedido' : 'Novo Pe
 const route = useRoute();
 const router = useRouter();
 
+const statusOptions = [
+  { label: 'ABERTO', value: 'ABERTO' },
+  { label: 'FINALIZADO', value: 'FINALIZADO' },
+  { label: 'CANCELADO', value: 'CANCELADO' },
+];
+
+const statusPedido = ref<'ABERTO' | 'FINALIZADO' | 'CANCELADO'>('ABERTO');
+
 const pedidoId = computed(() => (route.params.id ? Number(route.params.id) : null));
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'ABERTO':
+      return 'orange';
+    case 'FINALIZADO':
+      return 'positive';
+    case 'CANCELADO':
+      return 'negative';
+    default:
+      return 'grey';
+  }
+}
 
 interface PedidoItemApi {
   id: number;
@@ -423,6 +472,7 @@ async function salvarPedido() {
   try {
     const payload = {
       cliente_id: clienteSelecionado.value,
+      status: statusPedido.value,
       itens: itens.value.map((item) => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
@@ -430,14 +480,29 @@ async function salvarPedido() {
     };
 
     if (pedidoId.value) {
-      await api.put(`/pedidos/${pedidoId.value}`, payload);
+      if (statusPedido.value === 'CANCELADO') {
+        await api.put(`/pedidos/${pedidoId.value}/cancelar`);
 
-      Notify.create({
-        type: 'positive',
-        message: 'Pedido atualizado com sucesso',
-      });
+        Notify.create({
+          type: 'positive',
+          message: 'Pedido cancelado com sucesso',
+        });
+      } else {
+        await api.put(`/pedidos/${pedidoId.value}`, payload);
+
+        Notify.create({
+          type: 'positive',
+          message: 'Pedido atualizado com sucesso',
+        });
+      }
     } else {
-      await api.post('/pedidos', payload);
+      await api.post('/pedidos', {
+        cliente_id: clienteSelecionado.value,
+        itens: itens.value.map((item) => ({
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+        })),
+      });
 
       Notify.create({
         type: 'positive',
@@ -448,6 +513,7 @@ async function salvarPedido() {
     clienteSelecionado.value = null;
     produtoSelecionado.value = null;
     quantidade.value = 1;
+    statusPedido.value = 'ABERTO';
     itens.value = [];
 
     await carregarProdutos();
@@ -475,6 +541,7 @@ async function carregarPedidoEdicao() {
     const { data } = await api.get<PedidoDetalhe>(`/pedidos/${pedidoId.value}`);
 
     clienteSelecionado.value = data.cliente_id;
+    statusPedido.value = data.status as 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
 
     itens.value = data.itens.map((item) => ({
       produto_id: item.produto_id,

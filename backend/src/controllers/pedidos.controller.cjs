@@ -194,12 +194,12 @@ async function atualizarStatusPedido(req, res) {
 
     const result = await pool.query(
       `
-      UPDATE pedidos
-      SET status = $1
-      WHERE id = $2
-      RETURNING *
-      `,
-      [status, id],
+  UPDATE pedidos
+  SET cliente_id = $1, total = $2, status = $3
+  WHERE id = $4
+  RETURNING *
+  `,
+      [cliente_id, totalPedido, statusFinal, id],
     );
 
     res.json({
@@ -283,11 +283,20 @@ async function cancelarPedido(req, res) {
 
 async function atualizarPedido(req, res) {
   const { id } = req.params;
-  const { cliente_id, itens } = req.body;
+  const { cliente_id, itens, status } = req.body;
 
   if (!cliente_id || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({
       erro: 'Cliente e itens são obrigatórios',
+    });
+  }
+
+  const statusFinal = status || 'ABERTO';
+  const statusValidos = ['ABERTO', 'FINALIZADO'];
+
+  if (!statusValidos.includes(statusFinal)) {
+    return res.status(400).json({
+      erro: 'Status inválido para atualização. Use ABERTO ou FINALIZADO.',
     });
   }
 
@@ -305,10 +314,10 @@ async function atualizarPedido(req, res) {
 
     const pedidoAtual = pedido.rows[0];
 
-    if (pedidoAtual.status !== 'ABERTO') {
+    if (pedidoAtual.status === 'CANCELADO') {
       await client.query('ROLLBACK');
       return res.status(400).json({
-        erro: 'Apenas pedidos em aberto podem ser editados',
+        erro: 'Pedido cancelado não pode ser editado',
       });
     }
 
@@ -350,7 +359,7 @@ async function atualizarPedido(req, res) {
 
       const prod = produto.rows[0];
 
-      if (prod.estoque < quantidade) {
+      if (Number(prod.estoque) < Number(quantidade)) {
         throw new Error(`Estoque insuficiente para ${prod.nome}`);
       }
 
@@ -382,15 +391,15 @@ async function atualizarPedido(req, res) {
       );
     }
 
-    // 4. atualizar cliente e total
+    // 4. atualizar cliente, total e status
     const result = await client.query(
       `
       UPDATE pedidos
-      SET cliente_id = $1, total = $2
-      WHERE id = $3
+      SET cliente_id = $1, total = $2, status = $3
+      WHERE id = $4
       RETURNING *
       `,
-      [cliente_id, totalPedido, id],
+      [cliente_id, totalPedido, statusFinal, id],
     );
 
     await client.query('COMMIT');

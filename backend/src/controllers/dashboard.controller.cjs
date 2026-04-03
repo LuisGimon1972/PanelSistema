@@ -53,6 +53,18 @@ async function getDashboard(req, res) {
       ORDER BY status
     `);
 
+    const produtosMaisVendidos = await pool.query(`
+      SELECT
+        pi.nome_produto,
+        SUM(pi.quantidade)::int AS total_vendido
+        FROM pedido_itens pi
+        JOIN pedidos p ON p.id = pi.pedido_id
+        WHERE p.status = 'FINALIZADO'
+        GROUP BY pi.nome_produto
+        ORDER BY total_vendido DESC
+        LIMIT 5
+    `);
+
     res.json({
       cards: {
         totalClientes: totalClientes.rows[0].total,
@@ -64,6 +76,7 @@ async function getDashboard(req, res) {
         estoqueBaixo: estoqueBaixo.rows[0].total,
       },
       pedidosPorStatus: pedidosPorStatus.rows,
+      produtosMaisVendidos: produtosMaisVendidos.rows,
       ultimosClientes: ultimosClientes.rows,
       ultimosProdutos: ultimosProdutos.rows,
     });

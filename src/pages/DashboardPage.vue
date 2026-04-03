@@ -54,6 +54,25 @@
         </q-card>
       </div>
     </div>
+    <div class="row q-col-gutter-md q-mt-md">
+      <div class="col-12 col-lg-6">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6">Produtos Mais Vendidos</div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Top produtos com maior volume de vendas
+            </div>
+
+            <apexchart
+              type="bar"
+              height="320"
+              :options="chartProdutosOptions"
+              :series="chartProdutosSeries"
+            />
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
   </q-page>
 </template>
 
@@ -65,6 +84,11 @@ import type { ApexOptions } from 'apexcharts';
 interface PedidoStatusItem {
   status: string;
   total: number;
+}
+
+interface ProdutoMaisVendido {
+  nome_produto: string;
+  total_vendido: number;
 }
 
 interface Dashboard {
@@ -87,6 +111,7 @@ interface DashboardApiResponse {
     estoqueBaixo: number;
   };
   pedidosPorStatus: PedidoStatusItem[];
+  produtosMaisVendidos: ProdutoMaisVendido[];
 }
 
 const dashboard = ref<DashboardApiResponse>({
@@ -100,7 +125,40 @@ const dashboard = ref<DashboardApiResponse>({
     estoqueBaixo: 0,
   },
   pedidosPorStatus: [],
+  produtosMaisVendidos: [],
 });
+
+const chartProdutosSeries = computed(() => [
+  {
+    name: 'Quantidade vendida',
+    data: dashboard.value.produtosMaisVendidos.map((p) => Number(p.total_vendido)),
+  },
+]);
+
+const chartProdutosOptions = computed(() => ({
+  chart: {
+    toolbar: {
+      show: false,
+    },
+  },
+  xaxis: {
+    categories: dashboard.value.produtosMaisVendidos.map((p) => p.nome_produto),
+  },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 4,
+    },
+  },
+  dataLabels: {
+    enabled: true,
+  },
+  tooltip: {
+    y: {
+      formatter: (value: number) => `${value} vendidos`,
+    },
+  },
+}));
 
 const series = ref([
   {

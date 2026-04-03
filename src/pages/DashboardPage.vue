@@ -7,7 +7,7 @@
         <q-card class="bg-blue-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Clientes</div>
-            <div class="text-h5 text-primary">{{ dashboard.totalClientes }}</div>
+            <div class="text-h5 text-primary">{{ dashboard.cards.totalClientes }}</div>
           </q-card-section>
         </q-card>
       </div>
@@ -16,7 +16,7 @@
         <q-card class="bg-green-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Produtos em Estoque</div>
-            <div class="text-h5 text-green-8">{{ dashboard.totalProdutos }}</div>
+            <div class="text-h5 text-green-8">{{ dashboard.cards.totalProdutos }}</div>
           </q-card-section>
         </q-card>
       </div>
@@ -26,7 +26,7 @@
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Valor Estoque</div>
             <div class="text-h5 text-orange-9">
-              R$ {{ dashboard.valorEstoque.toFixed(2) }}
+              R$ {{ dashboard.cards.valorEstoque.toFixed(2) }}
             </div>
           </q-card-section>
         </q-card>
@@ -36,25 +36,36 @@
         <q-card class="bg-red-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Estoque Baixo</div>
-            <div class="text-h5 text-red-8">{{ dashboard.estoqueBaixo }}</div>
+            <div class="text-h5 text-red-8">{{ dashboard.cards.estoqueBaixo }}</div>
           </q-card-section>
         </q-card>
       </div>
     </div>
 
-    <apexchart
-      type="bar"
-      height="300"
-      :options="chartOptions"
-      :series="series"
-    />
+    <div class="row q-col-gutter-md q-mt-md">
+      <div class="col-12 col-lg-6">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6">Pedidos por Status</div>
+            <div class="text-caption text-grey-7 q-mb-md">Visão rápida da situação dos pedidos</div>
+
+            <apexchart type="donut" height="320" :options="chartOptions" :series="chartSeries" />
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onActivated } from 'vue';
+import { ref, onMounted, onActivated, computed } from 'vue';
 import axios from 'axios';
 import type { ApexOptions } from 'apexcharts';
+
+interface PedidoStatusItem {
+  status: string;
+  total: number;
+}
 
 interface Dashboard {
   totalClientes: number;
@@ -66,16 +77,29 @@ interface Dashboard {
 }
 
 interface DashboardApiResponse {
-  cards: Dashboard;
+  cards: {
+    totalClientes: number;
+    clientesAtivos: number;
+    totalCadastrosProdutos: number;
+    totalProdutos: number;
+    produtosAtivos: number;
+    valorEstoque: number;
+    estoqueBaixo: number;
+  };
+  pedidosPorStatus: PedidoStatusItem[];
 }
 
-const dashboard = ref<Dashboard>({
-  totalClientes: 0,
-  clientesAtivos: 0,
-  totalProdutos: 0,
-  produtosAtivos: 0,
-  valorEstoque: 0,
-  estoqueBaixo: 0,
+const dashboard = ref<DashboardApiResponse>({
+  cards: {
+    totalClientes: 0,
+    clientesAtivos: 0,
+    totalCadastrosProdutos: 0,
+    totalProdutos: 0,
+    produtosAtivos: 0,
+    valorEstoque: 0,
+    estoqueBaixo: 0,
+  },
+  pedidosPorStatus: [],
 });
 
 const series = ref([
@@ -85,30 +109,52 @@ const series = ref([
   },
 ]);
 
-const chartOptions = ref<ApexOptions>({
-  chart: {
-    id: 'basic-bar',
-    toolbar: {
-      show: false,
-    },
-  },
-  xaxis: {
-    categories: ['Acessórios', 'Informática', 'Periféricos'],
-  },
-  dataLabels: {
-    enabled: false,
-  },
-});
-
 async function carregarDashboard(): Promise<void> {
   try {
-    const { data } = await axios.get<DashboardApiResponse>(
-      'http://localhost:3000/dashboard'
-    );
+    const { data } = await axios.get<DashboardApiResponse>('http://localhost:3000/dashboard');
 
-    dashboard.value = data.cards;
+    dashboard.value = data;
   } catch (error) {
     console.error('Erro ao carregar dashboard:', error);
+  }
+}
+
+const chartSeries = computed(() =>
+  dashboard.value.pedidosPorStatus.map((item) => Number(item.total)),
+);
+
+const chartOptions = computed(() => ({
+  labels: dashboard.value.pedidosPorStatus.map((item) => item.status),
+  legend: {
+    position: 'bottom',
+  },
+  dataLabels: {
+    enabled: true,
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '55%',
+      },
+    },
+  },
+  tooltip: {
+    y: {
+      formatter: (value: number) => `${value} pedido(s)`,
+    },
+  },
+}));
+
+function traduzirStatus(status: string) {
+  switch (status) {
+    case 'ABERTO':
+      return 'Abertos';
+    case 'FINALIZADO':
+      return 'Finalizados';
+    case 'CANCELADO':
+      return 'Cancelados';
+    default:
+      return status;
   }
 }
 

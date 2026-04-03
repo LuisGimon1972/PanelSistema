@@ -46,6 +46,13 @@ async function getDashboard(req, res) {
       LIMIT 5
     `);
 
+    const pedidosPorStatus = await pool.query(`
+      SELECT status, COUNT(*)::int AS total
+      FROM pedidos
+      GROUP BY status
+      ORDER BY status
+    `);
+
     res.json({
       cards: {
         totalClientes: totalClientes.rows[0].total,
@@ -56,6 +63,7 @@ async function getDashboard(req, res) {
         valorEstoque: Number(valorEstoque.rows[0].total),
         estoqueBaixo: estoqueBaixo.rows[0].total,
       },
+      pedidosPorStatus: pedidosPorStatus.rows,
       ultimosClientes: ultimosClientes.rows,
       ultimosProdutos: ultimosProdutos.rows,
     });

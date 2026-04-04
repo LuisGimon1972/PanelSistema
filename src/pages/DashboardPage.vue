@@ -43,7 +43,7 @@
     </div>
 
     <div class="row q-col-gutter-md q-mt-md">
-      <div class="col-12 col-lg-6">
+      <div class="col-6">
         <q-card flat bordered>
           <q-card-section>
             <div class="text-h6">Pedidos por Status</div>
@@ -53,9 +53,8 @@
           </q-card-section>
         </q-card>
       </div>
-    </div>
-    <div class="row q-col-gutter-md q-mt-md">
-      <div class="col-12 col-lg-6">
+
+      <div class="col-6">
         <q-card flat bordered>
           <q-card-section>
             <div class="text-h6">Produtos Mais Vendidos</div>
@@ -135,27 +134,35 @@ const chartProdutosSeries = computed(() => [
   },
 ]);
 
+const cores = [
+  '#bfdbfe', // azul claro
+  '#bbf7d0', // verde claro
+  '#fde68a', // amarelo claro
+  '#fecaca', // vermelho claro
+  '#ddd6fe', // roxo claro
+  '#a5f3fc', // ciano claro
+  '#fbcfe8', // rosa claro
+];
+
 const chartProdutosOptions = computed(() => ({
   chart: {
-    toolbar: {
-      show: false,
-    },
+    toolbar: { show: false },
   },
+  colors: cores,
   xaxis: {
     categories: dashboard.value.produtosMaisVendidos.map((p) => p.nome_produto),
   },
   plotOptions: {
     bar: {
       horizontal: true,
-      borderRadius: 4,
+      borderRadius: 6,
+      distributed: true,
     },
   },
   dataLabels: {
     enabled: true,
-  },
-  tooltip: {
-    y: {
-      formatter: (value: number) => `${value} vendidos`,
+    style: {
+      colors: ['#000000'], // 👈 aqui resolve
     },
   },
 }));
@@ -182,7 +189,13 @@ const chartSeries = computed(() =>
 );
 
 const chartOptions = computed(() => ({
-  labels: dashboard.value.pedidosPorStatus.map((item) => item.status),
+  labels: dashboard.value.pedidosPorStatus.map((item) => traduzirStatus(item.status)),
+  colors: dashboard.value.pedidosPorStatus.map((item) => {
+    if (item.status === 'ABERTO') return '#f59e0b';
+    if (item.status === 'FINALIZADO') return '#22c55e';
+    if (item.status === 'CANCELADO') return '#ef4444';
+    return '#9ca3af';
+  }),
   legend: {
     position: 'bottom',
   },

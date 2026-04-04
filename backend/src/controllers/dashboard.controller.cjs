@@ -55,12 +55,13 @@ async function getDashboard(req, res) {
 
     const produtosMaisVendidos = await pool.query(`
       SELECT
-        pi.nome_produto,
+        pr.nome AS nome_produto,
         SUM(pi.quantidade)::int AS total_vendido
         FROM pedido_itens pi
         JOIN pedidos p ON p.id = pi.pedido_id
+        JOIN produtos pr ON pr.id = pi.produto_id
         WHERE p.status = 'FINALIZADO'
-        GROUP BY pi.nome_produto
+        GROUP BY pr.nome
         ORDER BY total_vendido DESC
         LIMIT 5
     `);

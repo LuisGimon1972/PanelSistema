@@ -26,13 +26,18 @@
                   outlined
                   label="Status"
                   :disable="!pedidoId"
+                  dense
                 />
               </div>
 
               <div class="col-12 col-md-6">
                 <div class="text-caption text-grey-7 q-mb-sm">Situação atual</div>
 
-                <q-badge :color="getStatusColor(statusPedido)" class="text-subtitle2 q-pa-sm">
+                <q-badge
+                  :color="getStatusColor(statusPedido)"
+                  class="text-subtitle2 q-pa-sm"
+                  style="border-radius: 12px"
+                >
                   {{ statusPedido }}
                 </q-badge>
               </div>
@@ -57,6 +62,7 @@
               input-debounce="300"
               label="Buscar cliente"
               @filter="filtrarClientes"
+              dense
             />
           </q-card-section>
         </q-card>
@@ -80,6 +86,7 @@
                   input-debounce="300"
                   label="Buscar produto"
                   @filter="filtrarProdutos"
+                  dense
                 />
               </div>
 
@@ -90,6 +97,7 @@
                   min="1"
                   outlined
                   label="Quantidade"
+                  dense
                 />
               </div>
 
@@ -99,6 +107,7 @@
                   icon="add_shopping_cart"
                   label="Adicionar"
                   class="full-width"
+                  style="border-radius: 12px"
                   @click="adicionarItem"
                 />
               </div>
@@ -193,6 +202,7 @@
               class="full-width"
               :disable="!podeSalvar"
               :loading="salvando"
+              style="border-radius: 12px"
               @click="salvarPedido"
             />
           </q-card-section>

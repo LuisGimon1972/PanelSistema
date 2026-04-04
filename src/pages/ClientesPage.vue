@@ -3,7 +3,12 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Clientes</div>
 
-      <q-btn label="Novo Cliente" color="primary" @click="abrirDialog" />
+      <q-btn
+        label="Novo Cliente"
+        color="primary"
+        style="border-radius: 12px"
+        @click="abrirDialog"
+      />
     </div>
 
     <div class="row q-col-gutter-md q-mb-md justify-end">
@@ -61,8 +66,13 @@
         </q-card>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn color="primary" label="Salvar" @click="salvarCliente" />
+          <q-btn flat label="Cancelar" style="border-radius: 12px" v-close-popup />
+          <q-btn
+            color="primary"
+            style="border-radius: 12px"
+            label="Salvar"
+            @click="salvarCliente"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -173,7 +183,31 @@ function abrirDialog(): void {
   dialog.value = true;
 }
 
+function normalizarDocumento(documento: string): string {
+  return documento.replace(/\D/g, '').trim();
+}
+
+function documentoJaExiste(): boolean {
+  const documentoForm = normalizarDocumento(form.value.documento);
+
+  return clientes.value.some((cliente) => {
+    if (editando.value && cliente.id === clienteId.value) {
+      return false;
+    }
+
+    return normalizarDocumento(cliente.documento) === documentoForm;
+  });
+}
+
 async function salvarCliente(): Promise<void> {
+  if (documentoJaExiste()) {
+    Notify.create({
+      type: 'warning',
+      message: 'Já existe um cliente com este documento',
+    });
+    return;
+  }
+
   try {
     if (editando.value && clienteId.value !== null) {
       await axios.put(`http://localhost:3000/clientes/${clienteId.value}`, form.value);

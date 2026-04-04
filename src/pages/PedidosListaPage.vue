@@ -6,7 +6,13 @@
         <div class="text-caption text-grey-7">Histórico de pedidos realizados</div>
       </div>
 
-      <q-btn color="primary" icon="add" label="Novo Pedido" to="/pedidos" />
+      <q-btn
+        color="primary"
+        icon="add"
+        label="Novo Pedido"
+        style="border-radius: 12px"
+        to="/pedidos"
+      />
     </div>
 
     <q-card flat bordered>
@@ -34,7 +40,18 @@
 
           <template #body-cell-status="props">
             <q-td :props="props">
-              <q-badge :color="props.row.status === 'ABERTO' ? 'orange' : 'positive'" outline>
+              <q-badge
+                :color="
+                  props.row.status === 'ABERTO'
+                    ? 'orange'
+                    : props.row.status === 'FINALIZADO'
+                      ? 'positive'
+                      : props.row.status === 'CANCELADO'
+                        ? 'negative'
+                        : 'grey'
+                "
+                outline
+              >
                 {{ props.row.status }}
               </q-badge>
             </q-td>
@@ -110,6 +127,7 @@
           <q-table
             flat
             bordered
+            dense
             :rows="pedidoDetalhe?.itens || []"
             :columns="columnsItens"
             row-key="id"

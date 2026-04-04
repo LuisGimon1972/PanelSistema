@@ -20,39 +20,41 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered class="bg-grey-1">
+    <q-drawer class="bg-primary text-white" v-model="leftDrawerOpen" show-if-above bordered>
       <q-list padding>
-        <q-item-label header class="text-grey-7"> Menu </q-item-label>
+        <q-item-label header class="text-white text-center text-weight-bold text-subtitle1 q-py-md">
+          Menu do Painel
+        </q-item-label>
 
-        <q-item clickable to="/" exact>
+        <q-item clickable to="/" exact active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="dashboard" />
           </q-item-section>
           <q-item-section>Dashboard</q-item-section>
         </q-item>
 
-        <q-item clickable to="/clientes">
+        <q-item clickable to="/clientes" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="people" />
           </q-item-section>
           <q-item-section>Clientes</q-item-section>
         </q-item>
 
-        <q-item clickable to="/produtos">
+        <q-item clickable to="/produtos" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="inventory_2" />
           </q-item-section>
           <q-item-section>Produtos</q-item-section>
         </q-item>
 
-        <q-item clickable to="/pedidos">
+        <q-item clickable to="/pedidos" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="add_shopping_cart" />
           </q-item-section>
           <q-item-section>Novo Pedido</q-item-section>
         </q-item>
 
-        <q-item clickable to="/pedidos/lista">
+        <q-item clickable to="/pedidos/lista" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="receipt_long" />
           </q-item-section>
@@ -109,3 +111,11 @@ async function logout() {
   await router.push('/login');
 }
 </script>
+
+<style scoped>
+.menu-active {
+  background-color: rgba(255, 255, 255, 0.2); /* destaque leve */
+  font-weight: 600;
+  border-radius: 8px;
+}
+</style>

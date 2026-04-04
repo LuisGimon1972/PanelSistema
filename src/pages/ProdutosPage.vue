@@ -3,7 +3,13 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Produtos</div>
 
-      <q-btn label="Novo Produto" color="primary" @click="abrirDialog" />
+      <q-btn
+        label="NOVO PRODUTO"
+        color="primary"
+        unelevated
+        style="border-radius: 12px"
+        @click="abrirDialog"
+      />
     </div>
     <div class="row q-col-gutter-md q-mb-md justify-end">
       <div class="col-12 col-md-3">
@@ -51,7 +57,7 @@
     </q-table>
 
     <q-dialog v-model="dialog">
-      <q-card style="min-width: 500px; max-width: 700px; width: 100%">
+      <q-card style="min-width: 500px; max-width: 500px; width: 100%">
         <q-card-section>
           <div class="text-h6">
             {{ editando ? 'Editar Produto' : 'Novo Produto' }}
@@ -114,7 +120,7 @@
               <div
                 v-else
                 class="bg-grey-2 text-grey-7 flex flex-center"
-                style="width: 180px; height: 180px; border-radius: 10px"
+                style="width: 180px; height: 100px; border-radius: 10px"
               >
                 Sem imagem
               </div>
@@ -133,8 +139,19 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancelar" v-close-popup @click="fecharDialog" />
-          <q-btn color="primary" label="Salvar" @click="salvarProduto" />
+          <q-btn
+            flat
+            label="Cancelar"
+            style="border-radius: 12px"
+            v-close-popup
+            @click="fecharDialog"
+          />
+          <q-btn
+            color="primary"
+            label="Salvar"
+            style="border-radius: 12px"
+            @click="salvarProduto"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>

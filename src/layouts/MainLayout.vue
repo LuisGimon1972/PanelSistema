@@ -20,7 +20,13 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer class="bg-primary text-white" v-model="leftDrawerOpen" show-if-above bordered>
+    <q-drawer
+      class="bg-primary text-white"
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+      :width="240"
+    >
       <q-list padding>
         <q-item-label header class="text-white text-center text-weight-bold text-subtitle1 q-py-md">
           Menu do Painel

@@ -66,6 +66,22 @@ async function getDashboard(req, res) {
         LIMIT 5
     `);
 
+    const faturamentoTotal = await pool.query(`
+      SELECT COALESCE(SUM(total), 0)::numeric(12,2) AS total
+        FROM pedidos
+        WHERE status = 'FINALIZADO'
+    `);
+
+    const vendasPorMes = await pool.query(`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', data), 'YYYY-MM') AS mes,
+        COALESCE(SUM(total), 0)::numeric(12,2) AS total
+        FROM pedidos
+        WHERE status = 'FINALIZADO'
+        GROUP BY DATE_TRUNC('month', data)
+        ORDER BY DATE_TRUNC('month', data)
+    `);
+
     res.json({
       cards: {
         totalClientes: totalClientes.rows[0].total,
@@ -75,11 +91,13 @@ async function getDashboard(req, res) {
         produtosAtivos: produtosAtivos.rows[0].total,
         valorEstoque: Number(valorEstoque.rows[0].total),
         estoqueBaixo: estoqueBaixo.rows[0].total,
+        faturamentoTotal: Number(faturamentoTotal.rows[0].total),
       },
       pedidosPorStatus: pedidosPorStatus.rows,
       produtosMaisVendidos: produtosMaisVendidos.rows,
       ultimosClientes: ultimosClientes.rows,
       ultimosProdutos: ultimosProdutos.rows,
+      vendasPorMes: vendasPorMes.rows,
     });
   } catch (err) {
     console.error('Erro no dashboard:', err.message);

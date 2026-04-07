@@ -2,8 +2,19 @@
   <q-page padding>
     <div class="text-h5 q-mb-md">Dashboard</div>
 
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div class="col-12 col-md-3">
+    <div class="row q-col-gutter-sm q-mb-lg">
+      <div class="col">
+        <q-card class="bg-green-2">
+          <q-card-section>
+            <div class="text-subtitle2 text-grey-8">Faturamento</div>
+            <div class="text-h5 text-green-8">
+              {{ formatarMoeda(dashboard.cards.faturamentoTotal) }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <div class="col">
         <q-card class="bg-blue-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Clientes</div>
@@ -12,7 +23,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-md-3">
+      <div class="col">
         <q-card class="bg-green-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Produtos em Estoque</div>
@@ -21,7 +32,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-md-3">
+      <div class="col">
         <q-card class="bg-orange-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Valor Estoque</div>
@@ -32,7 +43,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-md-3">
+      <div class="col">
         <q-card class="bg-red-1">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Estoque Baixo</div>
@@ -42,8 +53,23 @@
       </div>
     </div>
 
-    <div class="row q-col-gutter-md q-mt-md">
-      <div class="col-6">
+    <div class="row q-col-gutter-sm q-mt-sm">
+      <div class="col">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6">Vendas por Mês</div>
+            <div class="text-caption text-grey-7 q-mb-md">Evolução do faturamento mensal</div>
+
+            <apexchart
+              type="line"
+              height="320"
+              :options="chartVendasMesOptions"
+              :series="chartVendasMesSeries"
+            />
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="col">
         <q-card flat bordered>
           <q-card-section>
             <div class="text-h6">Pedidos por Status</div>
@@ -54,7 +80,7 @@
         </q-card>
       </div>
 
-      <div class="col-6">
+      <div class="col">
         <q-card flat bordered>
           <q-card-section>
             <div class="text-h6">Produtos Mais Vendidos</div>
@@ -85,6 +111,11 @@ interface PedidoStatusItem {
   total: number;
 }
 
+interface VendaPorMes {
+  mes: string;
+  total: number;
+}
+
 interface ProdutoMaisVendido {
   nome_produto: string;
   total_vendido: number;
@@ -97,6 +128,7 @@ interface Dashboard {
   produtosAtivos: number;
   valorEstoque: number;
   estoqueBaixo: number;
+  faturamentoTotal: number;
 }
 
 interface DashboardApiResponse {
@@ -108,8 +140,10 @@ interface DashboardApiResponse {
     produtosAtivos: number;
     valorEstoque: number;
     estoqueBaixo: number;
+    faturamentoTotal: number;
   };
   pedidosPorStatus: PedidoStatusItem[];
+  vendasPorMes: VendaPorMes[];
   produtosMaisVendidos: ProdutoMaisVendido[];
 }
 
@@ -122,9 +156,11 @@ const dashboard = ref<DashboardApiResponse>({
     produtosAtivos: 0,
     valorEstoque: 0,
     estoqueBaixo: 0,
+    faturamentoTotal: 0,
   },
   pedidosPorStatus: [],
   produtosMaisVendidos: [],
+  vendasPorMes: [],
 });
 
 const chartProdutosSeries = computed(() => [
@@ -228,6 +264,62 @@ function traduzirStatus(status: string) {
       return status;
   }
 }
+
+function formatarMoeda(valor: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(valor || 0));
+}
+
+function formatarMes(valor: string): string {
+  const [ano, mes] = valor.split('-');
+  const nomes = [
+    'Jan',
+    'Fev',
+    'Mar',
+    'Abr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Set',
+    'Out',
+    'Nov',
+    'Dez',
+  ];
+  return `${nomes[Number(mes) - 1]}/${ano}`;
+}
+
+const chartVendasMesSeries = computed(() => [
+  {
+    name: 'Faturamento',
+    data: dashboard.value.vendasPorMes.map((item) => Number(item.total)),
+  },
+]);
+
+const chartVendasMesOptions = computed(() => ({
+  chart: {
+    toolbar: {
+      show: false,
+    },
+  },
+  stroke: {
+    curve: 'smooth',
+    width: 3,
+  },
+  xaxis: {
+    categories: dashboard.value.vendasPorMes.map((item) => formatarMes(item.mes)),
+  },
+  dataLabels: {
+    enabled: true,
+  },
+  tooltip: {
+    y: {
+      formatter: (value: number) => formatarMoeda(value),
+    },
+  },
+}));
 
 onMounted(() => {
   void carregarDashboard();

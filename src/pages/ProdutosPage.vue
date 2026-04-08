@@ -65,9 +65,8 @@
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-card flat bordered class="q-pa-md" style="border-radius: 10px">
+          <q-card flat bordered class="q-pa-md">
             <div class="text-subtitle1 q-mb-md">Dados do produto</div>
-
             <q-input v-model="form.nome" label="Nome" outlined />
             <q-input v-model="form.categoria" label="Categoria" outlined />
             <q-input v-model.number="form.preco" label="Preço" type="number" outlined />
@@ -358,3 +357,9 @@ onMounted(() => {
   void carregarProdutos();
 });
 </script>
+
+<style scoped>
+.border {
+  border-radius: 12px;
+}
+</style>

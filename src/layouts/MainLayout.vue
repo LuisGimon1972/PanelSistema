@@ -120,7 +120,8 @@ async function logout() {
 
 <style scoped>
 .menu-active {
-  background-color: rgba(255, 255, 255, 0.2); /* destaque leve */
+  background-color: rgba(255, 255, 255, 0.2);
+  color: black;
   font-weight: 600;
   border-radius: 8px;
 }

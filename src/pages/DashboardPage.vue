@@ -4,7 +4,7 @@
 
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col">
-        <q-card class="bg-green-2">
+        <q-card class="bg-green-2 border">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Faturamento</div>
             <div class="text-h5 text-green-8">
@@ -15,7 +15,7 @@
       </div>
 
       <div class="col">
-        <q-card class="bg-blue-1">
+        <q-card class="bg-blue-1 border">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Clientes</div>
             <div class="text-h5 text-primary">{{ dashboard.cards.totalClientes }}</div>
@@ -24,7 +24,7 @@
       </div>
 
       <div class="col">
-        <q-card class="bg-green-1">
+        <q-card class="bg-green-1 border">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Produtos em Estoque</div>
             <div class="text-h5 text-green-8">{{ dashboard.cards.totalProdutos }}</div>
@@ -33,7 +33,7 @@
       </div>
 
       <div class="col">
-        <q-card class="bg-orange-1">
+        <q-card class="bg-orange-1 border">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Valor Estoque</div>
             <div class="text-h5 text-orange-9">
@@ -44,7 +44,7 @@
       </div>
 
       <div class="col">
-        <q-card class="bg-red-1">
+        <q-card class="bg-red-1 border">
           <q-card-section>
             <div class="text-subtitle2 text-grey-8">Estoque Baixo</div>
             <div class="text-h5 text-red-8">{{ dashboard.cards.estoqueBaixo }}</div>
@@ -55,7 +55,7 @@
 
     <div class="row q-col-gutter-sm q-mt-sm">
       <div class="col">
-        <q-card flat bordered>
+        <q-card flat bordered class="border">
           <q-card-section>
             <div class="text-h6">Vendas por Mês</div>
             <div class="text-caption text-grey-7 q-mb-md">Evolução do faturamento mensal</div>
@@ -70,7 +70,7 @@
         </q-card>
       </div>
       <div class="col">
-        <q-card flat bordered>
+        <q-card flat bordered class="border">
           <q-card-section>
             <div class="text-h6">Pedidos por Status</div>
             <div class="text-caption text-grey-7 q-mb-md">Visão rápida da situação dos pedidos</div>
@@ -81,7 +81,7 @@
       </div>
 
       <div class="col">
-        <q-card flat bordered>
+        <q-card flat bordered class="border">
           <q-card-section>
             <div class="text-h6">Produtos Mais Vendidos</div>
             <div class="text-caption text-grey-7 q-mb-md">
@@ -329,3 +329,8 @@ onActivated(() => {
   void carregarDashboard();
 });
 </script>
+<style scoped>
+.border {
+  border-radius: 12px;
+}
+</style>

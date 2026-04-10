@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 
 /*ALTER TABLE pedidos
-ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO';*/
+ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO'*/
 
 CREATE TABLE IF NOT EXISTS pedido_itens (
   id SERIAL PRIMARY KEY,
@@ -53,6 +53,11 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   quantidade INTEGER,
   subtotal NUMERIC(12,2)
 );
+
+CREATE TYPE origem_pedido AS ENUM ('PEDIDO', 'PDV');
+
+ALTER TABLE pedidos
+ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO';
 
 CREATE INDEX IF NOT EXISTS idx_clientes_nome
 ON clientes (nome);

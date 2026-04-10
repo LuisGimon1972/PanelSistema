@@ -17,10 +17,44 @@
 
     <q-card flat bordered class="border">
       <q-card-section>
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-md-3">
+            <q-select
+              v-model="filtroOrigem"
+              :options="opcoesOrigem"
+              label="Filtrar por Origem"
+              clearable
+              outlined
+              dense
+            />
+          </div>
+
+          <div class="col-12 col-md-3">
+            <q-select
+              v-model="filtroStatus"
+              :options="opcoesStatus"
+              label="Filtrar por Status"
+              clearable
+              outlined
+              dense
+            />
+          </div>
+
+          <div class="col-12 col-md-3 flex items-end">
+            <q-btn
+              color="warning"
+              icon="filter_alt_off"
+              label="Limpar Filtros"
+              style="border-radius: 12px"
+              :disable="!filtroOrigem && !filtroStatus"
+              @click="limparFiltros"
+            />
+          </div>
+        </div>
         <q-table
           flat
           bordered
-          :rows="pedidos"
+          :rows="pedidosFiltrados"
           :columns="columns"
           row-key="id"
           :loading="loading"
@@ -98,7 +132,7 @@
       <q-card class="border" style="min-width: 800px; max-width: 95vw">
         <q-card-section class="row items-center justify-between">
           <div>
-            <div class="text-h6">Pedido #{{ pedidoDetalhe?.id }}</div>
+            <div class="text-h6">Operação #{{ pedidoDetalhe?.id }}</div>
             <div class="text-caption text-grey-7">Cliente: {{ pedidoDetalhe?.cliente_nome }}</div>
           </div>
 
@@ -154,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { Notify } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
@@ -162,12 +196,31 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
+type OrigemPedido = 'PEDIDO' | 'PDV';
+type StatusPedido = 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
+
+const filtroOrigem = ref<OrigemPedido | null>(null);
+const filtroStatus = ref<StatusPedido | null>(null);
+
+const opcoesOrigem: OrigemPedido[] = ['PEDIDO', 'PDV'];
+const opcoesStatus: StatusPedido[] = ['ABERTO', 'FINALIZADO', 'CANCELADO'];
+
+const pedidosFiltrados = computed(() => {
+  return pedidos.value.filter((p) => {
+    const matchOrigem = !filtroOrigem.value || p.origem === filtroOrigem.value;
+    const matchStatus = !filtroStatus.value || p.status === filtroStatus.value;
+
+    return matchOrigem && matchStatus;
+  });
+});
+
 interface Pedido {
   id: number;
   data: string;
-  status: string;
+  status: StatusPedido;
   total: number;
-  cliente_nome: string;
+  cliente_nome: string | null;
+  origem: OrigemPedido;
 }
 
 interface PedidoItem {
@@ -180,8 +233,13 @@ interface PedidoItem {
 }
 
 interface PedidoDetalhe extends Pedido {
-  cliente_id: number;
+  cliente_id: number | null;
   itens: PedidoItem[];
+}
+
+function limparFiltros() {
+  filtroOrigem.value = null;
+  filtroStatus.value = null;
 }
 
 const pedidos = ref<Pedido[]>([]);
@@ -191,7 +249,8 @@ const dialogDetalhes = ref(false);
 const pedidoDetalhe = ref<PedidoDetalhe | null>(null);
 
 const columns = [
-  { name: 'id', label: 'Pedido', field: 'id', align: 'left' as const },
+  { name: 'id', label: 'Número', field: 'id', align: 'left' as const },
+  { name: 'origem', label: 'Origem', field: 'origem', align: 'left' as const },
   { name: 'cliente_nome', label: 'Cliente', field: 'cliente_nome', align: 'left' as const },
   { name: 'data', label: 'Data', field: 'data', align: 'left' as const },
   { name: 'status', label: 'Status', field: 'status', align: 'left' as const },
@@ -268,7 +327,7 @@ async function verPedido(id: number) {
   }
 }
 
-async function alterarStatus(id: number, status: string) {
+async function alterarStatus(id: number, status: StatusPedido) {
   try {
     if (status === 'CANCELADO') {
       await cancelarPedido(id);

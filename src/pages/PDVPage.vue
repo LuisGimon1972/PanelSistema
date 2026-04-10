@@ -397,6 +397,7 @@ async function finalizarVenda() {
   try {
     await api.post('/pedidos', {
       cliente_id: clienteFinalId.value,
+      origem: 'PDV',
       status: 'FINALIZADO',
       itens: carrinho.value.map((item) => ({
         produto_id: item.produto_id,

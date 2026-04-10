@@ -1,14 +1,23 @@
 const pool = require('../config/db.cjs');
 
 async function criarPedido(req, res) {
-  const { cliente_id, itens, status } = req.body;
+  const { cliente_id, itens, status, origem } = req.body;
 
   const statusFinal = status || 'ABERTO';
+  const origemFinal = origem || 'PEDIDO';
+
   const statusValidos = ['ABERTO', 'FINALIZADO'];
+  const origensValidas = ['PEDIDO', 'PDV'];
 
   if (!statusValidos.includes(statusFinal)) {
     return res.status(400).json({
       erro: 'Status inválido',
+    });
+  }
+
+  if (!origensValidas.includes(origemFinal)) {
+    return res.status(400).json({
+      erro: 'Origem inválida',
     });
   }
 
@@ -27,11 +36,11 @@ async function criarPedido(req, res) {
 
     const resultPedido = await client.query(
       `
-      INSERT INTO pedidos (cliente_id, total, status)
-      VALUES ($1, $2, $3)
+      INSERT INTO pedidos (cliente_id, total, status, origem)
+      VALUES ($1, $2, $3, $4)
       RETURNING id
       `,
-      [cliente_id, 0, statusFinal],
+      [cliente_id, 0, statusFinal, origemFinal],
     );
 
     const pedidoId = resultPedido.rows[0].id;
@@ -47,7 +56,7 @@ async function criarPedido(req, res) {
 
       const prod = produto.rows[0];
 
-      if (prod.estoque < quantidade) {
+      if (Number(prod.estoque) < Number(quantidade)) {
         throw new Error(`Estoque insuficiente para ${prod.nome}`);
       }
 
@@ -64,7 +73,7 @@ async function criarPedido(req, res) {
           quantidade,
           subtotal
         )
-        VALUES ($1,$2,$3,$4,$5,$6)
+        VALUES ($1, $2, $3, $4, $5, $6)
         `,
         [pedidoId, prod.id, prod.nome, prod.preco, quantidade, subtotal],
       );
@@ -93,6 +102,7 @@ async function criarPedido(req, res) {
     res.status(201).json({
       sucesso: true,
       pedido_id: pedidoId,
+      origem: origemFinal,
       total: totalPedido,
     });
   } catch (err) {
@@ -109,6 +119,7 @@ async function listarPedidos(req, res) {
       SELECT
         p.id,
         p.data,
+        p.origem,
         p.status,
         p.total,
         c.nome AS cliente_nome
@@ -132,6 +143,7 @@ async function buscarPedido(req, res) {
       SELECT
         p.id,
         p.data,
+        p.origem,
         p.status,
         p.total,
         p.cliente_id,
@@ -203,12 +215,12 @@ async function atualizarStatusPedido(req, res) {
 
     const result = await pool.query(
       `
-  UPDATE pedidos
-  SET cliente_id = $1, total = $2, status = $3
-  WHERE id = $4
-  RETURNING *
-  `,
-      [cliente_id, totalPedido, statusFinal, id],
+      UPDATE pedidos
+      SET status = $1
+      WHERE id = $2
+      RETURNING *
+      `,
+      [status, id],
     );
 
     res.json({
@@ -292,7 +304,7 @@ async function cancelarPedido(req, res) {
 
 async function atualizarPedido(req, res) {
   const { id } = req.params;
-  const { cliente_id, itens, status } = req.body;
+  const { cliente_id, itens, status, origem } = req.body;
 
   if (!cliente_id || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({
@@ -301,11 +313,20 @@ async function atualizarPedido(req, res) {
   }
 
   const statusFinal = status || 'ABERTO';
+  const origemFinal = origem || 'PEDIDO';
+
   const statusValidos = ['ABERTO', 'FINALIZADO'];
+  const origensValidas = ['PEDIDO', 'PDV'];
 
   if (!statusValidos.includes(statusFinal)) {
     return res.status(400).json({
       erro: 'Status inválido para atualização. Use ABERTO ou FINALIZADO.',
+    });
+  }
+
+  if (!origensValidas.includes(origemFinal)) {
+    return res.status(400).json({
+      erro: 'Origem inválida para atualização.',
     });
   }
 
@@ -330,7 +351,6 @@ async function atualizarPedido(req, res) {
       });
     }
 
-    // 1. devolver estoque dos itens antigos
     const itensAntigos = await client.query(
       `
       SELECT produto_id, quantidade
@@ -351,10 +371,8 @@ async function atualizarPedido(req, res) {
       );
     }
 
-    // 2. apagar itens antigos
     await client.query('DELETE FROM pedido_itens WHERE pedido_id = $1', [id]);
 
-    // 3. inserir novos itens e baixar estoque novamente
     let totalPedido = 0;
 
     for (const item of itens) {
@@ -400,15 +418,14 @@ async function atualizarPedido(req, res) {
       );
     }
 
-    // 4. atualizar cliente, total e status
     const result = await client.query(
       `
       UPDATE pedidos
-      SET cliente_id = $1, total = $2, status = $3
-      WHERE id = $4
+      SET cliente_id = $1, total = $2, status = $3, origem = $4
+      WHERE id = $5
       RETURNING *
       `,
-      [cliente_id, totalPedido, statusFinal, id],
+      [cliente_id, totalPedido, statusFinal, origemFinal, id],
     );
 
     await client.query('COMMIT');

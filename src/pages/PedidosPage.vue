@@ -234,6 +234,8 @@ const statusPedido = ref<'ABERTO' | 'FINALIZADO' | 'CANCELADO'>('ABERTO');
 
 const pedidoId = computed(() => (route.params.id ? Number(route.params.id) : null));
 
+const origemPedido = ref<'PEDIDO' | 'PDV'>('PEDIDO');
+
 function getStatusColor(status: string) {
   switch (status) {
     case 'ABERTO':
@@ -256,15 +258,22 @@ interface PedidoItemApi {
   subtotal: number;
 }
 
-interface PedidoDetalhe {
+type PedidoDetalhe = {
   id: number;
   cliente_id: number;
   cliente_nome: string;
+  status: 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
+  origem: 'PEDIDO' | 'PDV'; // 👈 adicionar aqui
+  total: string;
   data: string;
-  status: string;
-  total: number;
-  itens: PedidoItemApi[];
-}
+  itens: {
+    produto_id: number;
+    nome_produto: string;
+    preco_unitario: string;
+    quantidade: string;
+    subtotal: string;
+  }[];
+};
 
 interface Cliente {
   id: number;
@@ -483,6 +492,7 @@ async function salvarPedido() {
     const payload = {
       cliente_id: clienteSelecionado.value,
       status: statusPedido.value,
+      origem: 'PEDIDO',
       itens: itens.value.map((item) => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
@@ -506,13 +516,7 @@ async function salvarPedido() {
         });
       }
     } else {
-      await api.post('/pedidos', {
-        cliente_id: clienteSelecionado.value,
-        itens: itens.value.map((item) => ({
-          produto_id: item.produto_id,
-          quantidade: item.quantidade,
-        })),
-      });
+      await api.post('/pedidos', payload);
 
       Notify.create({
         type: 'positive',
@@ -552,6 +556,9 @@ async function carregarPedidoEdicao() {
 
     clienteSelecionado.value = data.cliente_id;
     statusPedido.value = data.status as 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
+
+    // 👇 novo
+    origemPedido.value = data.origem as 'PEDIDO' | 'PDV';
 
     itens.value = data.itens.map((item) => ({
       produto_id: item.produto_id,

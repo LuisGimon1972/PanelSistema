@@ -21,6 +21,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'pedidos', component: () => import('pages/PedidosPage.vue') },
       { path: 'pedidos/lista', component: () => import('pages/PedidosListaPage.vue') },
       { path: 'pedidos/editar/:id', component: () => import('pages/PedidosPage.vue') },
+      { path: 'pdv', component: () => import('pages/PDVPage.vue') },
     ],
   },
   {

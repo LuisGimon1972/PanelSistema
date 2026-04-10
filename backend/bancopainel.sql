@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS pedidos (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+/*ALTER TABLE pedidos
+ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO';*/
+
 CREATE TABLE IF NOT EXISTS pedido_itens (
   id SERIAL PRIMARY KEY,
   pedido_id INTEGER REFERENCES pedidos(id) ON DELETE CASCADE,
@@ -72,6 +75,10 @@ VALUES
   ('Maria Souza', 'maria@empresa.com', '11999990002', 'Campinas', 'ATIVO'),
   ('Carlos Lima', 'carlos@empresa.com', '11999990003', 'Santos', 'INATIVO')
 ON CONFLICT (email) DO NOTHING;
+
+/*INSERT INTO clientes (nome, email, telefone, cidade, status)
+VALUES ('Consumidor Final', 'consumidor@pdv.com', '', '', 'ATIVO')
+ON CONFLICT (email) DO NOTHING;*/
 
 /*DELETE FROM produtos;
 

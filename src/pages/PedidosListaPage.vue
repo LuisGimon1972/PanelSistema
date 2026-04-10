@@ -2,8 +2,8 @@
   <q-page padding class="bg-grey-2">
     <div class="row items-center justify-between q-mb-md">
       <div>
-        <div class="text-h5">Pedidos</div>
-        <div class="text-caption text-grey-7">Histórico de pedidos realizados</div>
+        <div class="text-h5">Pedidos e Vendas</div>
+        <div class="text-caption text-grey-7">Histórico de Pedidos e Vendas no PDV</div>
       </div>
 
       <q-btn
@@ -15,7 +15,7 @@
       />
     </div>
 
-    <q-card flat bordered>
+    <q-card flat bordered class="border">
       <q-card-section>
         <q-table
           flat
@@ -25,6 +25,7 @@
           row-key="id"
           :loading="loading"
           no-data-label="Nenhum pedido encontrado"
+          class="border"
         >
           <template #body-cell-data="props">
             <q-td :props="props">
@@ -94,7 +95,7 @@
     </q-card>
 
     <q-dialog v-model="dialogDetalhes">
-      <q-card style="min-width: 800px; max-width: 95vw">
+      <q-card class="border" style="min-width: 800px; max-width: 95vw">
         <q-card-section class="row items-center justify-between">
           <div>
             <div class="text-h6">Pedido #{{ pedidoDetalhe?.id }}</div>
@@ -328,3 +329,9 @@ onMounted(() => {
   carregarPedidos();
 });
 </script>
+
+<style scoped>
+.border {
+  border-radius: 12px;
+}
+</style>

@@ -1,7 +1,16 @@
 const pool = require('../config/db.cjs');
 
 async function criarPedido(req, res) {
-  const { cliente_id, itens } = req.body;
+  const { cliente_id, itens, status } = req.body;
+
+  const statusFinal = status || 'ABERTO';
+  const statusValidos = ['ABERTO', 'FINALIZADO'];
+
+  if (!statusValidos.includes(statusFinal)) {
+    return res.status(400).json({
+      erro: 'Status inválido',
+    });
+  }
 
   if (!cliente_id || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({
@@ -18,11 +27,11 @@ async function criarPedido(req, res) {
 
     const resultPedido = await client.query(
       `
-      INSERT INTO pedidos (cliente_id, total)
-      VALUES ($1, $2)
+      INSERT INTO pedidos (cliente_id, total, status)
+      VALUES ($1, $2, $3)
       RETURNING id
       `,
-      [cliente_id, 0],
+      [cliente_id, 0, statusFinal],
     );
 
     const pedidoId = resultPedido.rows[0].id;

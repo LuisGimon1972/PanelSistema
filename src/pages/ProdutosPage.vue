@@ -14,7 +14,7 @@
     <div class="row q-col-gutter-md q-mb-md justify-end">
       <div class="col-12 col-md-3">
         <q-input
-          class="input-soft-rounded"
+          class="border"
           v-model="filtroBusca"
           label="Buscar produto por nome"
           outlined
@@ -26,7 +26,7 @@
 
       <div class="col-12 col-md-2">
         <q-select
-          class="input-soft-rounded"
+          class="border"
           v-model="filtroCategoria"
           :options="categoriasOptions"
           label="Categoria"
@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <q-table :rows="produtos" :columns="columns" row-key="id" flat bordered>
+    <q-table :rows="produtos" :columns="columns" row-key="id" flat bordered class="border">
       <template v-slot:body-cell-foto="props">
         <q-td>
           <q-avatar v-if="props.row.foto" rounded size="42px">

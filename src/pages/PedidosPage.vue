@@ -3,7 +3,7 @@
     <div class="row q-col-gutter-md items-start">
       <!-- BLOCO ESQUERDO -->
       <div class="col-12 col-md-8">
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-h6">{{ tituloPagina }}</div>
             <div class="text-caption text-grey-7">
@@ -12,7 +12,7 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="row q-col-gutter-md items-center">
               <div class="col-12 col-md-6">
@@ -46,7 +46,7 @@
         </q-card>
 
         <!-- CLIENTE -->
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Cliente</div>
 
@@ -68,7 +68,7 @@
         </q-card>
 
         <!-- ADICIONAR PRODUTO -->
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Adicionar Produto</div>
 
@@ -122,7 +122,7 @@
         </q-card>
 
         <!-- ITENS -->
-        <q-card flat bordered>
+        <q-card flat bordered class="border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Itens do Pedido</div>
 
@@ -165,7 +165,7 @@
 
       <!-- BLOCO DIREITO -->
       <div class="col-12 col-md-4">
-        <q-card flat bordered class="sticky-card">
+        <q-card flat bordered class="sticky-card border">
           <q-card-section>
             <div class="text-h6 q-mb-md">Resumo da Venda</div>
 
@@ -589,5 +589,9 @@ onMounted(async () => {
 .sticky-card {
   position: sticky;
   top: 20px;
+}
+
+.border {
+  border-radius: 12px;
 }
 </style>

@@ -14,7 +14,7 @@
     <div class="row q-col-gutter-md q-mb-md justify-end">
       <div class="col-12 col-md-3">
         <q-input
-          class="input-soft-rounded"
+          class="border"
           v-model="filtroBusca"
           label="Buscar cliente por nome"
           outlined
@@ -26,7 +26,7 @@
 
       <div class="col-12 col-md-2">
         <q-select
-          class="input-soft-rounded"
+          class="border"
           v-model="filtroStatus"
           :options="statusOptions"
           label="Status"
@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <q-table :rows="clientes" :columns="columns" row-key="id" flat bordered>
+    <q-table :rows="clientes" :columns="columns" row-key="id" flat bordered class="border">
       <template v-slot:body-cell-acoes="props">
         <q-td>
           <q-btn icon="edit" size="sm" flat color="primary" @click="editarCliente(props.row)" />
@@ -260,5 +260,9 @@ onMounted(() => {
 .card-form {
   border-radius: 12px !important;
   overflow: hidden;
+}
+
+.border {
+  border-radius: 12px;
 }
 </style>

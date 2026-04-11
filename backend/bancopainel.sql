@@ -54,10 +54,10 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   subtotal NUMERIC(12,2)
 );
 
-CREATE TYPE origem_pedido AS ENUM ('PEDIDO', 'PDV');
+/*CREATE TYPE origem_pedido AS ENUM ('PEDIDO', 'PDV');
 
 ALTER TABLE pedidos
-ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO';
+ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO';*/
 
 CREATE INDEX IF NOT EXISTS idx_clientes_nome
 ON clientes (nome);

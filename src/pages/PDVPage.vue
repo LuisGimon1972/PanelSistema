@@ -33,12 +33,6 @@
               label="Selecionar cliente (opcional)"
               @filter="filtrarClientes"
             />
-
-            <div class="q-mt-sm text-caption text-grey-7">
-              Se não selecionar um cliente, a venda será registrada para
-              <strong>{{ nomeClienteFinal }}</strong
-              >.
-            </div>
           </q-card-section>
         </q-card>
 
@@ -53,36 +47,38 @@
               </template>
             </q-input>
 
-            <q-list bordered separator>
-              <q-item
-                v-for="produto in produtosFiltrados"
-                :key="produto.id"
-                clickable
-                dense
-                @click="adicionarProduto(produto)"
-              >
-                <q-item-section>
-                  <q-item-label>{{ produto.nome }}</q-item-label>
-                  <q-item-label caption> Estoque: {{ produto.estoque }} </q-item-label>
-                </q-item-section>
+            <div class="lista-produtos">
+              <q-list bordered separator>
+                <q-item
+                  v-for="produto in produtosFiltrados"
+                  :key="produto.id"
+                  clickable
+                  dense
+                  @click="adicionarProduto(produto)"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ produto.nome }}</q-item-label>
+                    <q-item-label caption> Estoque: {{ produto.estoque }} </q-item-label>
+                  </q-item-section>
 
-                <q-item-section side>
-                  <div class="text-weight-medium">
-                    {{ formatarMoeda(produto.preco) }}
-                  </div>
-                </q-item-section>
+                  <q-item-section side>
+                    <div class="text-weight-medium">
+                      {{ formatarMoeda(produto.preco) }}
+                    </div>
+                  </q-item-section>
 
-                <q-item-section side>
-                  <q-btn
-                    flat
-                    round
-                    color="primary"
-                    icon="add_shopping_cart"
-                    @click.stop="adicionarProduto(produto)"
-                  />
-                </q-item-section>
-              </q-item>
-            </q-list>
+                  <q-item-section side>
+                    <q-btn
+                      flat
+                      round
+                      color="primary"
+                      icon="add_shopping_cart"
+                      @click.stop="adicionarProduto(produto)"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
           </q-card-section>
         </q-card>
       </div>
@@ -107,58 +103,60 @@
             </div>
 
             <div v-else>
-              <div
-                v-for="item in carrinho"
-                :key="item.produto_id"
-                class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
-              >
-                <div class="row items-center justify-between q-col-gutter-sm">
-                  <div class="col">
-                    <div class="text-weight-medium">{{ item.nome }}</div>
-                    <div class="text-caption text-grey-7">
-                      {{ formatarMoeda(item.preco) }} por unidade
+              <div class="scroll-carrinho">
+                <div
+                  v-for="item in carrinho"
+                  :key="item.produto_id"
+                  class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
+                >
+                  <div class="row items-center justify-between q-col-gutter-sm">
+                    <div class="col" style="margin-top: -15px">
+                      <div class="text-weight-medium">{{ item.nome }}</div>
+                      <div class="text-caption text-grey-7">
+                        {{ formatarMoeda(item.preco) }} por unidade
+                      </div>
+                    </div>
+
+                    <div class="col-auto">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="remove"
+                        @click="diminuirQuantidade(item.produto_id)"
+                      />
+                    </div>
+
+                    <div class="col-auto">
+                      <div class="text-subtitle2">{{ item.quantidade }}</div>
+                    </div>
+
+                    <div class="col-auto">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="add"
+                        @click="aumentarQuantidade(item.produto_id)"
+                      />
+                    </div>
+
+                    <div class="col-auto">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        color="negative"
+                        icon="delete"
+                        @click="removerItem(item.produto_id)"
+                      />
                     </div>
                   </div>
 
-                  <div class="col-auto">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      icon="remove"
-                      @click="diminuirQuantidade(item.produto_id)"
-                    />
+                  <div class="row justify-between q-mt-sm" style="margin-top: -5px">
+                    <span class="text-grey-7">Subtotal</span>
+                    <strong>{{ formatarMoeda(item.subtotal) }}</strong>
                   </div>
-
-                  <div class="col-auto">
-                    <div class="text-subtitle2">{{ item.quantidade }}</div>
-                  </div>
-
-                  <div class="col-auto">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      icon="add"
-                      @click="aumentarQuantidade(item.produto_id)"
-                    />
-                  </div>
-
-                  <div class="col-auto">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      color="negative"
-                      icon="delete"
-                      @click="removerItem(item.produto_id)"
-                    />
-                  </div>
-                </div>
-
-                <div class="row justify-between q-mt-sm">
-                  <span class="text-grey-7">Subtotal</span>
-                  <strong>{{ formatarMoeda(item.subtotal) }}</strong>
                 </div>
               </div>
             </div>
@@ -450,5 +448,21 @@ onMounted(async () => {
 
 .border {
   border-radius: 12px;
+}
+
+.lista-scroll {
+  max-height: calc(5 * 60px);
+  overflow-y: auto;
+}
+
+.lista-produtos {
+  height: 240px;
+  overflow-y: scroll;
+  border: 1px solid #ddd;
+}
+
+.scroll-carrinho {
+  max-height: 300px; /* ~5 itens */
+  overflow-y: auto;
 }
 </style>

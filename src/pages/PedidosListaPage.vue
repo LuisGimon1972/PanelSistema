@@ -132,7 +132,7 @@
       <q-card class="border" style="min-width: 800px; max-width: 95vw">
         <q-card-section class="row items-center justify-between">
           <div>
-            <div class="text-h6">Operação #{{ pedidoDetalhe?.id }}</div>
+            <div class="text-h6">{{ pedidoDetalhe?.origem }} #{{ pedidoDetalhe?.id }}</div>
             <div class="text-caption text-grey-7">Cliente: {{ pedidoDetalhe?.cliente_nome }}</div>
           </div>
 

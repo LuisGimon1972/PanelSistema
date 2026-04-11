@@ -67,6 +67,12 @@
         <q-card-section class="q-gutter-md">
           <q-card flat bordered class="q-pa-md">
             <div class="text-subtitle1 q-mb-md">Dados do produto</div>
+            <q-input
+              v-model="form.codigo_barras"
+              label="Código de Barras"
+              mask="###########"
+              outlined
+            />
             <q-input v-model="form.nome" label="Nome" outlined />
             <q-input v-model="form.categoria" label="Categoria" outlined />
             <q-input v-model.number="form.preco" label="Preço" type="number" outlined />
@@ -161,6 +167,7 @@
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import type { QTableProps } from 'quasar';
+import { Notify } from 'quasar';
 
 interface Produto {
   id?: number;
@@ -169,6 +176,7 @@ interface Produto {
   preco: number;
   estoque: number;
   foto: string;
+  codigo_barras: string;
 }
 
 interface ProdutoForm {
@@ -178,6 +186,7 @@ interface ProdutoForm {
   preco: number;
   estoque: number;
   foto: string;
+  codigo_barras: string;
 }
 
 const API_URL = 'http://localhost:3000';
@@ -197,6 +206,7 @@ const form = ref<ProdutoForm>({
   preco: 0,
   estoque: 0,
   foto: '',
+  codigo_barras: '',
 });
 
 const filtroBusca = ref<string>('');
@@ -213,6 +223,7 @@ const categoriasOptions = ref<string[]>([
 const columns: QTableProps['columns'] = [
   { name: 'foto', label: 'Foto', field: 'foto', align: 'left' },
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' },
+  { name: 'codigo_barras', label: 'Barras', field: 'codigo_barras', align: 'left' },
   { name: 'categoria', label: 'Categoria', field: 'categoria', align: 'left' },
   {
     name: 'preco',
@@ -255,6 +266,7 @@ function resetFormulario(): void {
     preco: 0,
     estoque: 0,
     foto: '',
+    codigo_barras: '',
   };
 
   fotoArquivo.value = null;
@@ -288,6 +300,7 @@ function editarProduto(produto: Produto): void {
     estoque: Number(produto.estoque),
     categoria: produto.categoria ?? '',
     foto: produto.foto ?? '',
+    codigo_barras: produto.codigo_barras ?? '',
   };
 
   produtoId.value = produto.id ?? null;
@@ -328,21 +341,37 @@ async function uploadFoto(): Promise<string> {
 }
 
 async function salvarProduto(): Promise<void> {
-  const fotoUrl = await uploadFoto();
+  try {
+    const fotoUrl = await uploadFoto();
 
-  const payload = {
-    ...form.value,
-    foto: fotoUrl,
-  };
+    const payload = {
+      ...form.value,
+      codigo_barras: form.value.codigo_barras?.trim() || null,
+      foto: fotoUrl,
+    };
 
-  if (editando.value && produtoId.value !== null) {
-    await axios.put(`${API_URL}/produtos/${produtoId.value}`, payload);
-  } else {
-    await axios.post(`${API_URL}/produtos`, payload);
+    if (editando.value && produtoId.value !== null) {
+      await axios.put(`${API_URL}/produtos/${produtoId.value}`, payload);
+    } else {
+      await axios.post(`${API_URL}/produtos`, payload);
+    }
+
+    Notify.create({
+      type: 'positive',
+      message: editando.value ? 'Produto atualizado com sucesso' : 'Produto criado com sucesso',
+    });
+
+    fecharDialog();
+    await carregarProdutos();
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const mensagem = error?.response?.data?.erro || 'Erro ao salvar produto';
+
+    Notify.create({
+      type: status === 409 ? 'warning' : 'negative',
+      message: mensagem,
+    });
   }
-
-  fecharDialog();
-  await carregarProdutos();
 }
 
 async function excluirProduto(id?: number): Promise<void> {

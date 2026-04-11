@@ -41,6 +41,12 @@ CREATE TABLE IF NOT EXISTS pedidos (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+/*ALTER TABLE produtos
+ADD COLUMN codigo_barras VARCHAR(50);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_produtos_codigo_barras
+ON produtos (codigo_barras);*/
+
 /*ALTER TABLE pedidos
 ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO'*/
 

@@ -5,7 +5,7 @@
       <div class="col-12 col-md-7">
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
-            <div class="text-h5">PDV</div>
+            <div class="text-h5">Ponto de Venda</div>
             <div class="text-caption text-grey-7">
               Venda rápida com seleção de cliente e controle automático de estoque
             </div>
@@ -153,7 +153,7 @@
                     </div>
                   </div>
 
-                  <div class="row justify-between q-mt-sm" style="margin-top: -5px">
+                  <div class="row justify-between q-mt-sm">
                     <span class="text-grey-7">Subtotal</span>
                     <strong>{{ formatarMoeda(item.subtotal) }}</strong>
                   </div>
@@ -456,13 +456,13 @@ onMounted(async () => {
 }
 
 .lista-produtos {
-  height: 240px;
+  height: 185px;
   overflow-y: scroll;
   border: 1px solid #ddd;
 }
 
 .scroll-carrinho {
-  max-height: 300px; /* ~5 itens */
+  max-height: 270px; /* ~5 itens */
   overflow-y: auto;
 }
 </style>

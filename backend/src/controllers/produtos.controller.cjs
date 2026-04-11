@@ -48,7 +48,7 @@ async function buscarProduto(req, res) {
 }
 
 async function criarProduto(req, res) {
-  const { nome, categoria, preco, estoque, status, foto } = req.body;
+  const { nome, categoria, preco, estoque, status, foto, codigo_barras } = req.body;
 
   if (!nome) {
     return res.status(400).json({
@@ -59,53 +59,98 @@ async function criarProduto(req, res) {
   try {
     const result = await pool.query(
       `
-      INSERT INTO produtos (nome, categoria, preco, estoque, status, foto)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO produtos (nome, categoria, preco, estoque, status, foto, codigo_barras)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
       `,
-      [nome, categoria || null, preco || 0, estoque || 0, status || 'ATIVO', foto || null],
+      [
+        nome,
+        categoria || null,
+        preco || 0,
+        estoque || 0,
+        status || 'ATIVO',
+        foto || null,
+        codigo_barras || null,
+      ],
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       sucesso: true,
       produto: result.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    return res.status(500).json({ erro: err.message });
   }
 }
 
 async function atualizarProduto(req, res) {
   const { id } = req.params;
-  const { nome, categoria, preco, estoque, status, foto } = req.body;
+  const { nome, categoria, preco, estoque, status, foto, codigo_barras } = req.body;
 
-  if (!nome) {
+  if (!nome?.trim()) {
     return res.status(400).json({
       erro: 'Nome é obrigatório',
     });
   }
 
   try {
+    if (codigo_barras) {
+      const codigoExistente = await pool.query(
+        `
+        SELECT id
+        FROM produtos
+        WHERE codigo_barras = $1 AND id <> $2
+        LIMIT 1
+        `,
+        [codigo_barras, id],
+      );
+
+      if (codigoExistente.rows.length > 0) {
+        return res.status(409).json({
+          erro: 'Código de barras já cadastrado para outro produto',
+        });
+      }
+    }
+
     const result = await pool.query(
       `
       UPDATE produtos
-      SET nome = $1, categoria = $2, preco = $3, estoque = $4, status = $5, foto = $6
-      WHERE id = $7
+      SET 
+        nome = $1,
+        categoria = $2,
+        preco = $3,
+        estoque = $4,
+        status = $5,
+        foto = $6,
+        codigo_barras = $7
+      WHERE id = $8
       RETURNING *
       `,
-      [nome, categoria || null, preco || 0, estoque || 0, status || 'ATIVO', foto || null, id],
+      [
+        nome.trim(),
+        categoria ?? null,
+        preco ?? 0,
+        estoque ?? 0,
+        status ?? 'ATIVO',
+        foto ?? null,
+        codigo_barras ?? null,
+        id,
+      ],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ erro: 'Produto não encontrado' });
     }
 
-    res.json({
+    return res.json({
       sucesso: true,
       produto: result.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    return res.status(500).json({
+      erro: 'Erro ao atualizar produto',
+      detalhe: err.message,
+    });
   }
 }
 
@@ -128,10 +173,29 @@ async function excluirProduto(req, res) {
   }
 }
 
+async function buscarPorCodigoBarras(req, res) {
+  const { codigo } = req.params;
+
+  try {
+    const { rows } = await pool.query('SELECT * FROM produtos WHERE codigo_barras = $1', [codigo]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        erro: 'Produto não encontrado',
+      });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+}
+
 module.exports = {
   listarProdutos,
   buscarProduto,
   criarProduto,
   atualizarProduto,
   excluirProduto,
+  buscarPorCodigoBarras,
 };

@@ -32,7 +32,11 @@ async function listarProdutos(req, res) {
 }
 
 async function buscarProduto(req, res) {
-  const { id } = req.params;
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
 
   try {
     const { rows } = await pool.query('SELECT * FROM produtos WHERE id = $1', [id]);
@@ -41,9 +45,10 @@ async function buscarProduto(req, res) {
       return res.status(404).json({ erro: 'Produto não encontrado' });
     }
 
-    res.json(rows[0]);
+    return res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error(err);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 }
 

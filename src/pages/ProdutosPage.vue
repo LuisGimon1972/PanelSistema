@@ -221,6 +221,7 @@ const categoriasOptions = ref<string[]>([
 ]);
 
 const columns: QTableProps['columns'] = [
+  { name: 'id', label: 'Código', field: 'id', align: 'left' },
   { name: 'foto', label: 'Foto', field: 'foto', align: 'left' },
   { name: 'nome', label: 'Nome', field: 'nome', align: 'left' },
   { name: 'codigo_barras', label: 'Barras', field: 'codigo_barras', align: 'left' },

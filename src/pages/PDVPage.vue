@@ -41,7 +41,13 @@
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Produtos</div>
 
-            <q-input v-model="busca" outlined dense label="Buscar produto" class="q-mb-md">
+            <q-input
+              ref="inputBusca"
+              v-model="busca"
+              outlined
+              label="Buscar produto ou código de barras"
+              @keyup.enter="buscarOuAdicionarProduto"
+            >
               <template #prepend>
                 <q-icon name="search" />
               </template>
@@ -197,6 +203,8 @@ import { Notify } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
 
+const API_URL = 'http://localhost:3000';
+
 interface Cliente {
   id: number;
   nome: string;
@@ -231,6 +239,7 @@ interface ItemCarrinho {
 
 const busca = ref('');
 const finalizando = ref(false);
+const inputBusca = ref();
 
 const clientes = ref<Cliente[]>([]);
 const produtos = ref<Produto[]>([]);
@@ -247,6 +256,14 @@ const clientePadrao = computed(
 );
 
 const clienteFinalId = computed(() => clienteSelecionado.value || clientePadrao.value?.id || null);
+
+const beep = new Audio('/src/assets/beep-02.mp3');
+const beepErro = new Audio('/src/assets/error-sounds.mp3');
+
+function tocarBeep() {
+  beep.currentTime = 0;
+  beep.play();
+}
 
 const nomeClienteFinal = computed(() => {
   if (clienteSelecionado.value) {
@@ -304,6 +321,81 @@ function filtrarClientes(val: string, update: (callback: () => void) => void) {
         value: cliente.id,
       }));
   });
+}
+
+/*async function buscarOuAdicionarProduto() {
+  const termo = busca.value.trim();
+  if (!termo) return;
+  const ehCodigoBarras = /^\d+$/.test(termo);
+
+  if (ehCodigoBarras && termo.length > 6) {
+    await buscarPorCodigo(termo);
+    return;
+  }
+}*/
+
+async function buscarOuAdicionarProduto() {
+  const termo = busca.value.trim();
+
+  if (!termo) return;
+
+  const ehNumero = /^\d+$/.test(termo);
+
+  if (!ehNumero) return;
+
+  if (termo.length >= 6) {
+    await buscarPorCodigo(termo);
+    return;
+  }
+
+  await buscarPorIdPro(Number(termo));
+}
+
+async function buscarPorIdPro(id: number) {
+  try {
+    const { data } = await axios.get(`${API_URL}/produtos/${id}`);
+
+    adicionarProduto(data);
+
+    tocarBeep();
+
+    busca.value = '';
+    focarBusca();
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Produto não encontrado',
+    });
+
+    busca.value = '';
+    focarBusca();
+  }
+}
+
+function focarBusca() {
+  inputBusca.value?.focus();
+}
+
+async function buscarPorCodigo(codigo: string) {
+  try {
+    const { data } = await api.get(`/produtos/codigo/${codigo}`);
+
+    adicionarProduto(data);
+
+    tocarBeep(); // 🔊 AQUI
+
+    busca.value = '';
+    focarBusca();
+  } catch (error) {
+    beepErro.play();
+    Notify.create({
+      type: 'negative',
+      message: 'Produto não encontrado',
+    });
+
+    busca.value = '';
+    focarBusca();
+  }
 }
 
 function adicionarProduto(produto: Produto) {

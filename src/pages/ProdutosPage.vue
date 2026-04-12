@@ -75,8 +75,14 @@
             />
             <q-input v-model="form.nome" label="Nome" outlined />
             <q-input v-model="form.categoria" label="Categoria" outlined />
-            <q-input v-model.number="form.preco" label="Preço" type="number" outlined />
-            <q-input v-model.number="form.estoque" label="Estoque" type="number" outlined />
+            <q-input v-model.number="form.preco" label="Preço" type="number" outlined :min="0.0" />
+            <q-input
+              v-model.number="form.estoque"
+              label="Estoque"
+              type="number"
+              outlined
+              :min="0"
+            />
           </q-card>
 
           <q-card flat bordered class="q-pa-md" style="border-radius: 10px">

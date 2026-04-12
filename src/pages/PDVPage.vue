@@ -323,17 +323,6 @@ function filtrarClientes(val: string, update: (callback: () => void) => void) {
   });
 }
 
-/*async function buscarOuAdicionarProduto() {
-  const termo = busca.value.trim();
-  if (!termo) return;
-  const ehCodigoBarras = /^\d+$/.test(termo);
-
-  if (ehCodigoBarras && termo.length > 6) {
-    await buscarPorCodigo(termo);
-    return;
-  }
-}*/
-
 async function buscarOuAdicionarProduto() {
   const termo = busca.value.trim();
 
@@ -362,6 +351,7 @@ async function buscarPorIdPro(id: number) {
     busca.value = '';
     focarBusca();
   } catch (error) {
+    beepErro.play();
     Notify.create({
       type: 'negative',
       message: 'Produto não encontrado',
@@ -400,6 +390,7 @@ async function buscarPorCodigo(codigo: string) {
 
 function adicionarProduto(produto: Produto) {
   if (produto.estoque <= 0) {
+    beepErro.play();
     Notify.create({
       type: 'warning',
       message: `Produto sem estoque: ${produto.nome}`,
@@ -417,6 +408,7 @@ function adicionarProduto(produto: Produto) {
       });
       return;
     }
+    tocarBeep();
 
     itemExistente.quantidade += 1;
     itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
@@ -429,6 +421,7 @@ function adicionarProduto(produto: Produto) {
       subtotal: Number(produto.preco),
       estoqueDisponivel: Number(produto.estoque),
     });
+    tocarBeep();
   }
 }
 

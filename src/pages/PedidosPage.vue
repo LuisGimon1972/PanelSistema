@@ -195,6 +195,99 @@
               </strong>
             </div>
 
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="descontoValor"
+                  type="number"
+                  min="0"
+                  :max="descontoTipo === 'percentual' ? 99 : undefined"
+                  outlined
+                  label="Desc."
+                  dense
+                  :rules="[
+                    (val) => Number(val) >= 0 || 'Valor inválido',
+                    (val) => descontoTipo !== 'percentual' || Number(val) <= 99 || 'Máx. 99%',
+                  ]"
+                >
+                  <template #prepend>
+                    <q-btn-toggle
+                      v-model="descontoTipo"
+                      no-caps
+                      unelevated
+                      dense
+                      size="md"
+                      toggle-color="primary"
+                      color="white"
+                      text-color="primary"
+                      style="width: 60%"
+                      :options="[
+                        { label: 'R$', value: 'valor' },
+                        { label: '%', value: 'percentual' },
+                      ]"
+                    />
+                  </template>
+                </q-input>
+              </div>
+
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="acrescimoValor"
+                  type="number"
+                  min="0"
+                  outlined
+                  label="Acréscimo"
+                  dense
+                >
+                  <template #prepend>
+                    <q-btn-toggle
+                      v-model="acrescimoTipo"
+                      no-caps
+                      unelevated
+                      dense
+                      size="md"
+                      toggle-color="primary"
+                      color="white"
+                      text-color="primary"
+                      style="width: 60%"
+                      :options="[
+                        { label: 'R$', value: 'valor' },
+                        { label: '%', value: 'percentual' },
+                      ]"
+                    />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">Subtotal</span>
+              <strong>{{ formatarMoeda(subtotalPedido) }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">
+                Desconto
+                <small v-if="descontoTipo === 'percentual'">({{ descontoValor }}%)</small>
+              </span>
+              <strong>{{ formatarMoeda(descontoCalculado) }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">
+                Acréscimo
+                <small v-if="acrescimoTipo === 'percentual'">({{ acrescimoValor }}%)</small>
+              </span>
+              <strong>{{ formatarMoeda(acrescimoCalculado) }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-md">
+              <span class="text-grey-7">Total</span>
+              <strong class="text-primary text-h6">
+                {{ formatarMoeda(totalPedido) }}
+              </strong>
+            </div>
+
             <q-btn
               color="positive"
               icon="save"
@@ -213,7 +306,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Notify } from 'quasar';
 import { api } from 'boot/axios';
@@ -264,6 +357,8 @@ type PedidoDetalhe = {
   cliente_nome: string;
   status: 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
   origem: 'PEDIDO' | 'PDV'; // 👈 adicionar aqui
+  desconto: number;
+  acrescimo: number;
   total: string;
   data: string;
   itens: {
@@ -318,6 +413,37 @@ const quantidade = ref<number>(1);
 const itens = ref<ItemPedido[]>([]);
 const salvando = ref(false);
 
+const desconto = ref<number>(0);
+const acrescimo = ref<number>(0);
+
+const descontoTipo = ref<'valor' | 'percentual'>('valor');
+const descontoValor = ref<number>(0);
+
+const acrescimoTipo = ref<'valor' | 'percentual'>('valor');
+const acrescimoValor = ref<number>(0);
+
+const subtotalPedido = computed(() => itens.value.reduce((acc, item) => acc + item.subtotal, 0));
+
+const descontoCalculado = computed(() => {
+  if (descontoTipo.value === 'percentual') {
+    return subtotalPedido.value * (Number(descontoValor.value || 0) / 100);
+  }
+
+  return Number(descontoValor.value || 0);
+});
+
+const acrescimoCalculado = computed(() => {
+  if (acrescimoTipo.value === 'percentual') {
+    return subtotalPedido.value * (Number(acrescimoValor.value || 0) / 100);
+  }
+
+  return Number(acrescimoValor.value || 0);
+});
+
+const totalPedido = computed(() =>
+  Math.max(0, subtotalPedido.value - descontoCalculado.value + acrescimoCalculado.value),
+);
+
 const columns = [
   { name: 'nome', label: 'Produto', field: 'nome', align: 'left' as const },
   { name: 'preco', label: 'Preço', field: 'preco', align: 'left' as const },
@@ -337,8 +463,6 @@ const clienteAtual = computed(
 const nomeClienteSelecionado = computed(() => clienteAtual.value?.nome || '');
 
 const totalItens = computed(() => itens.value.reduce((acc, item) => acc + item.quantidade, 0));
-
-const totalPedido = computed(() => itens.value.reduce((acc, item) => acc + item.subtotal, 0));
 
 const podeSalvar = computed(() => !!clienteSelecionado.value && itens.value.length > 0);
 
@@ -492,6 +616,8 @@ async function salvarPedido() {
     const payload = {
       cliente_id: clienteSelecionado.value,
       status: statusPedido.value,
+      desconto: Number(descontoCalculado.value || 0),
+      acrescimo: Number(acrescimoCalculado.value || 0),
       origem: 'PEDIDO',
       itens: itens.value.map((item) => ({
         produto_id: item.produto_id,
@@ -529,6 +655,8 @@ async function salvarPedido() {
     quantidade.value = 1;
     statusPedido.value = 'ABERTO';
     itens.value = [];
+    desconto.value = 0;
+    acrescimo.value = 0;
 
     await carregarProdutos();
     await router.push('/pedidos/lista');
@@ -556,8 +684,11 @@ async function carregarPedidoEdicao() {
 
     clienteSelecionado.value = data.cliente_id;
     statusPedido.value = data.status as 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
+    descontoValor.value = Number(data.desconto || 0);
+    descontoTipo.value = 'valor'; // backend siempre manda valor
 
-    // 👇 novo
+    acrescimoValor.value = Number(data.acrescimo || 0);
+    acrescimoTipo.value = 'valor';
     origemPedido.value = data.origem as 'PEDIDO' | 'PDV';
 
     itens.value = data.itens.map((item) => ({
@@ -582,6 +713,12 @@ async function carregarPedidoEdicao() {
     await router.push('/pedidos/lista');
   }
 }
+
+watch([descontoTipo, descontoValor], ([tipo, valor]) => {
+  if (tipo === 'percentual' && Number(valor) > 99) {
+    descontoValor.value = 99;
+  }
+});
 
 onMounted(async () => {
   await Promise.all([carregarClientes(), carregarProdutos()]);

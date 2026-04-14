@@ -45,6 +45,7 @@
               ref="inputBusca"
               v-model="busca"
               outlined
+              dense
               label="Buscar produto ou código de barras"
               @keyup.enter="buscarOuAdicionarProduto"
             >

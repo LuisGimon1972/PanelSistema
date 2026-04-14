@@ -1,30 +1,46 @@
 const pool = require('../config/db.cjs');
 
 async function criarPedido(req, res) {
-  const { cliente_id, itens, status, origem } = req.body;
+  const { cliente_id, itens, status, origem, desconto, acrescimo } = req.body;
 
   const statusFinal = status || 'ABERTO';
   const origemFinal = origem || 'PEDIDO';
+  const descontoFinal = Number(desconto ?? 0);
+  const acrescimoFinal = Number(acrescimo ?? 0);
 
   const statusValidos = ['ABERTO', 'FINALIZADO'];
   const origensValidas = ['PEDIDO', 'PDV'];
 
   if (!statusValidos.includes(statusFinal)) {
-    return res.status(400).json({
-      erro: 'Status inválido',
-    });
+    return res.status(400).json({ erro: 'Status inválido' });
   }
 
   if (!origensValidas.includes(origemFinal)) {
-    return res.status(400).json({
-      erro: 'Origem inválida',
-    });
+    return res.status(400).json({ erro: 'Origem inválida' });
   }
 
-  if (!cliente_id || !Array.isArray(itens) || itens.length === 0) {
-    return res.status(400).json({
-      erro: 'Cliente e itens são obrigatórios',
-    });
+  if (cliente_id == null || !Array.isArray(itens) || itens.length === 0) {
+    return res.status(400).json({ erro: 'Cliente e itens são obrigatórios' });
+  }
+
+  if (Number.isNaN(descontoFinal) || descontoFinal < 0) {
+    return res.status(400).json({ erro: 'Desconto inválido' });
+  }
+
+  if (Number.isNaN(acrescimoFinal) || acrescimoFinal < 0) {
+    return res.status(400).json({ erro: 'Acréscimo inválido' });
+  }
+
+  for (const item of itens) {
+    if (
+      !item.produto_id ||
+      !Number.isFinite(Number(item.quantidade)) ||
+      Number(item.quantidade) <= 0
+    ) {
+      return res.status(400).json({
+        erro: 'Cada item deve ter produto_id e quantidade maior que zero',
+      });
+    }
   }
 
   const client = await pool.connect();
@@ -36,31 +52,42 @@ async function criarPedido(req, res) {
 
     const resultPedido = await client.query(
       `
-      INSERT INTO pedidos (cliente_id, total, status, origem)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO pedidos (cliente_id, total, status, origem, desconto, acrescimo)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
       `,
-      [cliente_id, 0, statusFinal, origemFinal],
+      [cliente_id, 0, statusFinal, origemFinal, descontoFinal, acrescimoFinal],
     );
 
     const pedidoId = resultPedido.rows[0].id;
 
     for (const item of itens) {
-      const { produto_id, quantidade } = item;
+      const produto_id = Number(item.produto_id);
+      const quantidade = Number(item.quantidade);
 
-      const produto = await client.query('SELECT * FROM produtos WHERE id = $1', [produto_id]);
+      const produto = await client.query(
+        `
+        SELECT *
+        FROM produtos
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [produto_id],
+      );
 
       if (produto.rows.length === 0) {
-        throw new Error('Produto não encontrado');
+        throw new Error(`Produto ${produto_id} não encontrado`);
       }
 
       const prod = produto.rows[0];
+      const estoqueAtual = Number(prod.estoque);
+      const precoUnitario = Number(prod.preco);
 
-      if (Number(prod.estoque) < Number(quantidade)) {
+      if (estoqueAtual < quantidade) {
         throw new Error(`Estoque insuficiente para ${prod.nome}`);
       }
 
-      const subtotal = Number(prod.preco) * Number(quantidade);
+      const subtotal = precoUnitario * quantidade;
       totalPedido += subtotal;
 
       await client.query(
@@ -75,7 +102,7 @@ async function criarPedido(req, res) {
         )
         VALUES ($1, $2, $3, $4, $5, $6)
         `,
-        [pedidoId, prod.id, prod.nome, prod.preco, quantidade, subtotal],
+        [pedidoId, prod.id, prod.nome, precoUnitario, quantidade, subtotal],
       );
 
       await client.query(
@@ -88,26 +115,43 @@ async function criarPedido(req, res) {
       );
     }
 
+    const totalFinal = totalPedido - descontoFinal + acrescimoFinal;
+
+    if (totalFinal < 0) {
+      throw new Error('O total final do pedido não pode ser negativo');
+    }
+
     await client.query(
       `
       UPDATE pedidos
       SET total = $1
       WHERE id = $2
       `,
-      [totalPedido, pedidoId],
+      [totalFinal, pedidoId],
     );
 
     await client.query('COMMIT');
 
-    res.status(201).json({
+    return res.status(201).json({
       sucesso: true,
       pedido_id: pedidoId,
       origem: origemFinal,
-      total: totalPedido,
+      total: totalFinal,
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(500).json({ erro: err.message });
+
+    const errosDeRegra = [
+      'Produto',
+      'Estoque insuficiente',
+      'O total final do pedido não pode ser negativo',
+    ];
+
+    const statusCode = errosDeRegra.some((msg) => err.message.includes(msg)) ? 400 : 500;
+
+    return res.status(statusCode).json({
+      erro: err.message || 'Erro interno ao criar pedido',
+    });
   } finally {
     client.release();
   }
@@ -121,6 +165,8 @@ async function listarPedidos(req, res) {
         p.data,
         p.origem,
         p.status,
+        p.desconto,
+        p.acrescimo,
         p.total,
         c.nome AS cliente_nome
       FROM pedidos p
@@ -146,6 +192,8 @@ async function buscarPedido(req, res) {
         p.origem,
         p.status,
         p.total,
+        p.desconto,
+        p.acrescimo,
         p.cliente_id,
         c.nome AS cliente_nome
       FROM pedidos p
@@ -304,7 +352,7 @@ async function cancelarPedido(req, res) {
 
 async function atualizarPedido(req, res) {
   const { id } = req.params;
-  const { cliente_id, itens, status, origem } = req.body;
+  const { cliente_id, itens, status, origem, desconto, acrescimo } = req.body;
 
   if (!cliente_id || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({
@@ -314,6 +362,9 @@ async function atualizarPedido(req, res) {
 
   const statusFinal = status || 'ABERTO';
   const origemFinal = origem || 'PEDIDO';
+
+  const descontoFinal = Number(desconto ?? 0);
+  const acrescimoFinal = Number(acrescimo ?? 0);
 
   const statusValidos = ['ABERTO', 'FINALIZADO'];
   const origensValidas = ['PEDIDO', 'PDV'];
@@ -327,6 +378,12 @@ async function atualizarPedido(req, res) {
   if (!origensValidas.includes(origemFinal)) {
     return res.status(400).json({
       erro: 'Origem inválida para atualização.',
+    });
+  }
+
+  if (Number.isNaN(descontoFinal) || Number.isNaN(acrescimoFinal)) {
+    return res.status(400).json({
+      erro: 'Desconto e acréscimo devem ser números válidos.',
     });
   }
 
@@ -367,7 +424,7 @@ async function atualizarPedido(req, res) {
         SET estoque = estoque + $1
         WHERE id = $2
         `,
-        [item.quantidade, item.produto_id],
+        [Number(item.quantidade), item.produto_id],
       );
     }
 
@@ -376,7 +433,12 @@ async function atualizarPedido(req, res) {
     let totalPedido = 0;
 
     for (const item of itens) {
-      const { produto_id, quantidade } = item;
+      const produto_id = Number(item.produto_id);
+      const quantidade = Number(item.quantidade);
+
+      if (!produto_id || !quantidade || quantidade <= 0) {
+        throw new Error('Itens inválidos no pedido');
+      }
 
       const produto = await client.query('SELECT * FROM produtos WHERE id = $1', [produto_id]);
 
@@ -385,12 +447,14 @@ async function atualizarPedido(req, res) {
       }
 
       const prod = produto.rows[0];
+      const estoqueAtual = Number(prod.estoque);
+      const precoUnitario = Number(prod.preco);
 
-      if (Number(prod.estoque) < Number(quantidade)) {
+      if (estoqueAtual < quantidade) {
         throw new Error(`Estoque insuficiente para ${prod.nome}`);
       }
 
-      const subtotal = Number(prod.preco) * Number(quantidade);
+      const subtotal = precoUnitario * quantidade;
       totalPedido += subtotal;
 
       await client.query(
@@ -405,7 +469,7 @@ async function atualizarPedido(req, res) {
         )
         VALUES ($1, $2, $3, $4, $5, $6)
         `,
-        [id, prod.id, prod.nome, prod.preco, quantidade, subtotal],
+        [id, prod.id, prod.nome, precoUnitario, quantidade, subtotal],
       );
 
       await client.query(
@@ -418,25 +482,32 @@ async function atualizarPedido(req, res) {
       );
     }
 
+    const totalFinal = totalPedido - descontoFinal + acrescimoFinal;
+
     const result = await client.query(
       `
       UPDATE pedidos
-      SET cliente_id = $1, total = $2, status = $3, origem = $4
-      WHERE id = $5
+      SET cliente_id = $1,
+          total = $2,
+          status = $3,
+          origem = $4,
+          desconto = $5,
+          acrescimo = $6
+      WHERE id = $7
       RETURNING *
       `,
-      [cliente_id, totalPedido, statusFinal, origemFinal, id],
+      [cliente_id, totalFinal, statusFinal, origemFinal, descontoFinal, acrescimoFinal, id],
     );
 
     await client.query('COMMIT');
 
-    res.json({
+    return res.json({
       sucesso: true,
       pedido: result.rows[0],
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(500).json({ erro: err.message });
+    return res.status(500).json({ erro: err.message });
   } finally {
     client.release();
   }

@@ -48,6 +48,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_produtos_codigo_barras
 ON produtos (codigo_barras);*/
 
 /*ALTER TABLE pedidos
+ADD COLUMN desconto NUMERIC (12,2) DEFAULT 0,
+ADD COLUMN acrescimo NUMERIC (12,2) DEFAULT 0;*/
+
+
+/*ALTER TABLE pedidos
 ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO'*/
 
 CREATE TABLE IF NOT EXISTS pedido_itens (

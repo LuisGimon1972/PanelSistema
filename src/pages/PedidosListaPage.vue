@@ -141,21 +141,24 @@
 
         <q-card-section>
           <div class="row q-col-gutter-md q-mb-md">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <div class="text-caption text-grey-7">Data</div>
               <div>{{ formatarData(pedidoDetalhe?.data) }}</div>
             </div>
 
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <div class="text-caption text-grey-7">Status</div>
               <div>{{ pedidoDetalhe?.status }}</div>
             </div>
 
-            <div class="col-12 col-md-4">
-              <div class="text-caption text-grey-7">Total</div>
-              <div class="text-weight-bold text-primary">
-                {{ formatarMoeda(pedidoDetalhe?.total || 0) }}
-              </div>
+            <div class="col-12 col-md-3">
+              <div class="text-caption text-grey-7">Desconto</div>
+              <div class="text-negative">- {{ formatarMoeda(pedidoDetalhe?.desconto || 0) }}</div>
+            </div>
+
+            <div class="col-12 col-md-3">
+              <div class="text-caption text-grey-7">Acréscimo</div>
+              <div class="text-positive">+ {{ formatarMoeda(pedidoDetalhe?.acrescimo || 0) }}</div>
             </div>
           </div>
 
@@ -181,6 +184,57 @@
               </q-td>
             </template>
           </q-table>
+
+          <div class="row justify-end q-mt-md">
+            <div class="col-12 col-md-4">
+              <q-list dense bordered class="rounded-borders">
+                <q-item>
+                  <q-item-section>
+                    <q-item-label>Subtotal</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    {{
+                      formatarMoeda(
+                        (pedidoDetalhe?.itens || []).reduce(
+                          (acc, item) => acc + Number(item.subtotal || 0),
+                          0,
+                        ),
+                      )
+                    }}
+                  </q-item-section>
+                </q-item>
+
+                <q-item>
+                  <q-item-section>
+                    <q-item-label>Desconto</q-item-label>
+                  </q-item-section>
+                  <q-item-section side class="text-negative">
+                    - {{ formatarMoeda(pedidoDetalhe?.desconto || 0) }}
+                  </q-item-section>
+                </q-item>
+
+                <q-item>
+                  <q-item-section>
+                    <q-item-label>Acréscimo</q-item-label>
+                  </q-item-section>
+                  <q-item-section side class="text-positive">
+                    + {{ formatarMoeda(pedidoDetalhe?.acrescimo || 0) }}
+                  </q-item-section>
+                </q-item>
+
+                <q-separator />
+
+                <q-item>
+                  <q-item-section>
+                    <q-item-label class="text-weight-bold">Total</q-item-label>
+                  </q-item-section>
+                  <q-item-section side class="text-weight-bold text-primary">
+                    {{ formatarMoeda(pedidoDetalhe?.total || 0) }}
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -235,6 +289,8 @@ interface PedidoItem {
 interface PedidoDetalhe extends Pedido {
   cliente_id: number | null;
   itens: PedidoItem[];
+  desconto: number;
+  acrescimo: number;
 }
 
 function limparFiltros() {
@@ -254,6 +310,8 @@ const columns = [
   { name: 'cliente_nome', label: 'Cliente', field: 'cliente_nome', align: 'left' as const },
   { name: 'data', label: 'Data', field: 'data', align: 'left' as const },
   { name: 'status', label: 'Status', field: 'status', align: 'left' as const },
+  { name: 'desconto', label: 'Desconto', field: 'desconto', align: 'left' as const },
+  { name: 'acrescimo', label: 'Acréscimo', field: 'acrescimo', align: 'left' as const },
   { name: 'total', label: 'Total', field: 'total', align: 'left' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'center' as const },
 ];

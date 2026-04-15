@@ -41,6 +41,17 @@ CREATE TABLE IF NOT EXISTS pedidos (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+/*ALTER TABLE pedidos
+ADD COLUMN desconto_tipo VARCHAR(20) DEFAULT 'valor',
+ADD COLUMN desconto_valor NUMERIC(12,2) DEFAULT 0,
+ADD COLUMN acrescimo_tipo VARCHAR(20) DEFAULT 'valor',
+ADD COLUMN acrescimo_valor NUMERIC(12,2) DEFAULT 0;*/
+
+/*ALTER TABLE pedidos
+ADD COLUMN forma_pagamento VARCHAR(50),
+ADD COLUMN valor_recebido NUMERIC(10,2),
+ADD COLUMN troco NUMERIC(10,2);*/
+
 /*ALTER TABLE produtos
 ADD COLUMN codigo_barras VARCHAR(50);
 

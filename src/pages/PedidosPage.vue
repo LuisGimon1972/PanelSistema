@@ -351,22 +351,38 @@ interface PedidoItemApi {
   subtotal: number;
 }
 
+type TipoAjuste = 'valor' | 'percentual';
+
 type PedidoDetalhe = {
   id: number;
   cliente_id: number;
   cliente_nome: string;
+
   status: 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
-  origem: 'PEDIDO' | 'PDV'; // 👈 adicionar aqui
+  origem: 'PEDIDO' | 'PDV';
+
   desconto: number;
   acrescimo: number;
-  total: string;
+
+  desconto_tipo: TipoAjuste;
+  desconto_valor: number;
+
+  acrescimo_tipo: TipoAjuste;
+  acrescimo_valor: number;
+
+  forma_pagamento?: string | null;
+  valor_recebido?: number | null;
+  troco?: number | null;
+
+  total: number;
   data: string;
+
   itens: {
     produto_id: number;
     nome_produto: string;
-    preco_unitario: string;
-    quantidade: string;
-    subtotal: string;
+    preco_unitario: number;
+    quantidade: number;
+    subtotal: number;
   }[];
 };
 
@@ -611,17 +627,30 @@ async function salvarPedido() {
   }
 
   salvando.value = true;
+  alert(descontoCalculado.value);
 
   try {
     const payload = {
-      cliente_id: clienteSelecionado.value,
+      cliente_id: Number(clienteSelecionado.value),
       status: statusPedido.value,
+
       desconto: Number(descontoCalculado.value || 0),
       acrescimo: Number(acrescimoCalculado.value || 0),
-      origem: 'PEDIDO',
+      origem: origemPedido.value,
+
+      desconto_tipo: descontoTipo.value,
+      desconto_valor: Number(descontoValor.value || 0),
+
+      acrescimo_tipo: acrescimoTipo.value,
+      acrescimo_valor: Number(acrescimoValor.value || 0),
+
+      forma_pagamento: 'Dinheiro',
+      valor_recebido: Number(totalPedido.value || 0),
+      troco: 0,
+
       itens: itens.value.map((item) => ({
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
+        produto_id: Number(item.produto_id),
+        quantidade: Number(item.quantidade),
       })),
     };
 
@@ -654,9 +683,14 @@ async function salvarPedido() {
     produtoSelecionado.value = null;
     quantidade.value = 1;
     statusPedido.value = 'ABERTO';
+    origemPedido.value = 'PEDIDO';
     itens.value = [];
-    desconto.value = 0;
-    acrescimo.value = 0;
+
+    descontoTipo.value = 'valor';
+    descontoValor.value = 0;
+
+    acrescimoTipo.value = 'valor';
+    acrescimoValor.value = 0;
 
     await carregarProdutos();
     await router.push('/pedidos/lista');
@@ -683,13 +717,14 @@ async function carregarPedidoEdicao() {
     const { data } = await api.get<PedidoDetalhe>(`/pedidos/${pedidoId.value}`);
 
     clienteSelecionado.value = data.cliente_id;
-    statusPedido.value = data.status as 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
-    descontoValor.value = Number(data.desconto || 0);
-    descontoTipo.value = 'valor'; // backend siempre manda valor
+    statusPedido.value = data.status;
+    origemPedido.value = data.origem;
 
-    acrescimoValor.value = Number(data.acrescimo || 0);
-    acrescimoTipo.value = 'valor';
-    origemPedido.value = data.origem as 'PEDIDO' | 'PDV';
+    descontoTipo.value = data.desconto_tipo || 'valor';
+    descontoValor.value = Number(data.desconto_valor || 0);
+
+    acrescimoTipo.value = data.acrescimo_tipo || 'valor';
+    acrescimoValor.value = Number(data.acrescimo_valor || 0);
 
     itens.value = data.itens.map((item) => ({
       produto_id: item.produto_id,

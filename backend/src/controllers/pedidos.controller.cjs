@@ -1,15 +1,42 @@
 const pool = require('../config/db.cjs');
 
 async function criarPedido(req, res) {
-  const { cliente_id, itens, status, origem, desconto, acrescimo } = req.body;
+  const {
+    cliente_id,
+    itens,
+    status,
+    origem,
+    desconto,
+    acrescimo,
+    desconto_tipo,
+    desconto_valor,
+    acrescimo_tipo,
+    acrescimo_valor,
+    forma_pagamento,
+    valor_recebido,
+    troco,
+  } = req.body;
 
   const statusFinal = status || 'ABERTO';
   const origemFinal = origem || 'PEDIDO';
-  const descontoFinal = Number(desconto ?? 0);
-  const acrescimoFinal = Number(acrescimo ?? 0);
+
+  const descontoTipoFinal = desconto_tipo || 'valor';
+  const acrescimoTipoFinal = acrescimo_tipo || 'valor';
+
+  const descontoValorFinal = Number(desconto_valor ?? desconto ?? 0);
+  const acrescimoValorFinal = Number(acrescimo_valor ?? acrescimo ?? 0);
 
   const statusValidos = ['ABERTO', 'FINALIZADO'];
   const origensValidas = ['PEDIDO', 'PDV'];
+  const tiposValidos = ['valor', 'percentual'];
+
+  if (!tiposValidos.includes(descontoTipoFinal)) {
+    return res.status(400).json({ erro: 'Tipo de desconto inválido' });
+  }
+
+  if (!tiposValidos.includes(acrescimoTipoFinal)) {
+    return res.status(400).json({ erro: 'Tipo de acréscimo inválido' });
+  }
 
   if (!statusValidos.includes(statusFinal)) {
     return res.status(400).json({ erro: 'Status inválido' });
@@ -23,11 +50,11 @@ async function criarPedido(req, res) {
     return res.status(400).json({ erro: 'Cliente e itens são obrigatórios' });
   }
 
-  if (Number.isNaN(descontoFinal) || descontoFinal < 0) {
+  if (Number.isNaN(descontoValorFinal) || descontoValorFinal < 0) {
     return res.status(400).json({ erro: 'Desconto inválido' });
   }
 
-  if (Number.isNaN(acrescimoFinal) || acrescimoFinal < 0) {
+  if (Number.isNaN(acrescimoValorFinal) || acrescimoValorFinal < 0) {
     return res.status(400).json({ erro: 'Acréscimo inválido' });
   }
 
@@ -52,11 +79,39 @@ async function criarPedido(req, res) {
 
     const resultPedido = await client.query(
       `
-      INSERT INTO pedidos (cliente_id, total, status, origem, desconto, acrescimo)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id
-      `,
-      [cliente_id, 0, statusFinal, origemFinal, descontoFinal, acrescimoFinal],
+  INSERT INTO pedidos (
+    cliente_id,
+    total,
+    status,
+    origem,
+    desconto,
+    acrescimo,
+    desconto_tipo,
+    desconto_valor,
+    acrescimo_tipo,
+    acrescimo_valor,
+    forma_pagamento,
+    valor_recebido,
+    troco
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+  RETURNING id
+  `,
+      [
+        cliente_id,
+        0, // total ainda será atualizado
+        statusFinal,
+        origemFinal,
+        0, // desconto (vamos atualizar depois)
+        0, // acrescimo (vamos atualizar depois)
+        descontoTipoFinal,
+        descontoValorFinal,
+        acrescimoTipoFinal,
+        acrescimoValorFinal,
+        forma_pagamento ?? null,
+        valor_recebido ?? null,
+        troco ?? null,
+      ],
     );
 
     const pedidoId = resultPedido.rows[0].id;
@@ -115,7 +170,18 @@ async function criarPedido(req, res) {
       );
     }
 
-    const totalFinal = totalPedido - descontoFinal + acrescimoFinal;
+    let descontoCalculado = descontoValorFinal;
+    let acrescimoCalculado = acrescimoValorFinal;
+
+    if (descontoTipoFinal === 'percentual') {
+      descontoCalculado = (totalPedido * descontoValorFinal) / 100;
+    }
+
+    if (acrescimoTipoFinal === 'percentual') {
+      acrescimoCalculado = (totalPedido * acrescimoValorFinal) / 100;
+    }
+
+    const totalFinal = totalPedido - descontoCalculado + acrescimoCalculado;
 
     if (totalFinal < 0) {
       throw new Error('O total final do pedido não pode ser negativo');
@@ -123,11 +189,13 @@ async function criarPedido(req, res) {
 
     await client.query(
       `
-      UPDATE pedidos
-      SET total = $1
-      WHERE id = $2
-      `,
-      [totalFinal, pedidoId],
+  UPDATE pedidos
+  SET total = $1,
+      desconto = $2,
+      acrescimo = $3
+  WHERE id = $4
+  `,
+      [totalFinal, descontoCalculado, acrescimoCalculado, pedidoId],
     );
 
     await client.query('COMMIT');
@@ -136,6 +204,9 @@ async function criarPedido(req, res) {
       sucesso: true,
       pedido_id: pedidoId,
       origem: origemFinal,
+      total_produtos: totalPedido,
+      desconto: descontoCalculado,
+      acrescimo: acrescimoCalculado,
       total: totalFinal,
     });
   } catch (err) {
@@ -194,6 +265,13 @@ async function buscarPedido(req, res) {
         p.total,
         p.desconto,
         p.acrescimo,
+        p.desconto_tipo,
+        p.desconto_valor,
+        p.acrescimo_tipo,
+        p.acrescimo_valor,
+        p.forma_pagamento,
+        p.valor_recebido,
+        p.troco,
         p.cliente_id,
         c.nome AS cliente_nome
       FROM pedidos p
@@ -352,9 +430,24 @@ async function cancelarPedido(req, res) {
 
 async function atualizarPedido(req, res) {
   const { id } = req.params;
-  const { cliente_id, itens, status, origem, desconto, acrescimo } = req.body;
 
-  if (!cliente_id || !Array.isArray(itens) || itens.length === 0) {
+  const {
+    cliente_id,
+    itens,
+    status,
+    origem,
+    desconto,
+    acrescimo,
+    desconto_tipo,
+    desconto_valor,
+    acrescimo_tipo,
+    acrescimo_valor,
+    forma_pagamento,
+    valor_recebido,
+    troco,
+  } = req.body;
+
+  if (cliente_id == null || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({
       erro: 'Cliente e itens são obrigatórios',
     });
@@ -363,11 +456,27 @@ async function atualizarPedido(req, res) {
   const statusFinal = status || 'ABERTO';
   const origemFinal = origem || 'PEDIDO';
 
-  const descontoFinal = Number(desconto ?? 0);
-  const acrescimoFinal = Number(acrescimo ?? 0);
+  const descontoTipoFinal = desconto_tipo || 'valor';
+  const acrescimoTipoFinal = acrescimo_tipo || 'valor';
+
+  const descontoValorFinal = Number(desconto_valor ?? desconto ?? 0);
+  const acrescimoValorFinal = Number(acrescimo_valor ?? acrescimo ?? 0);
 
   const statusValidos = ['ABERTO', 'FINALIZADO'];
   const origensValidas = ['PEDIDO', 'PDV'];
+  const tiposValidos = ['valor', 'percentual'];
+
+  if (!tiposValidos.includes(descontoTipoFinal)) {
+    return res.status(400).json({
+      erro: 'Tipo de desconto inválido',
+    });
+  }
+
+  if (!tiposValidos.includes(acrescimoTipoFinal)) {
+    return res.status(400).json({
+      erro: 'Tipo de acréscimo inválido',
+    });
+  }
 
   if (!statusValidos.includes(statusFinal)) {
     return res.status(400).json({
@@ -381,10 +490,28 @@ async function atualizarPedido(req, res) {
     });
   }
 
-  if (Number.isNaN(descontoFinal) || Number.isNaN(acrescimoFinal)) {
+  if (Number.isNaN(descontoValorFinal) || descontoValorFinal < 0) {
     return res.status(400).json({
-      erro: 'Desconto e acréscimo devem ser números válidos.',
+      erro: 'Desconto inválido',
     });
+  }
+
+  if (Number.isNaN(acrescimoValorFinal) || acrescimoValorFinal < 0) {
+    return res.status(400).json({
+      erro: 'Acréscimo inválido',
+    });
+  }
+
+  for (const item of itens) {
+    if (
+      !item.produto_id ||
+      !Number.isFinite(Number(item.quantidade)) ||
+      Number(item.quantidade) <= 0
+    ) {
+      return res.status(400).json({
+        erro: 'Cada item deve ter produto_id e quantidade maior que zero',
+      });
+    }
   }
 
   const client = await pool.connect();
@@ -392,7 +519,15 @@ async function atualizarPedido(req, res) {
   try {
     await client.query('BEGIN');
 
-    const pedido = await client.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+    const pedido = await client.query(
+      `
+      SELECT *
+      FROM pedidos
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id],
+    );
 
     if (pedido.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -428,7 +563,13 @@ async function atualizarPedido(req, res) {
       );
     }
 
-    await client.query('DELETE FROM pedido_itens WHERE pedido_id = $1', [id]);
+    await client.query(
+      `
+      DELETE FROM pedido_itens
+      WHERE pedido_id = $1
+      `,
+      [id],
+    );
 
     let totalPedido = 0;
 
@@ -436,14 +577,18 @@ async function atualizarPedido(req, res) {
       const produto_id = Number(item.produto_id);
       const quantidade = Number(item.quantidade);
 
-      if (!produto_id || !quantidade || quantidade <= 0) {
-        throw new Error('Itens inválidos no pedido');
-      }
-
-      const produto = await client.query('SELECT * FROM produtos WHERE id = $1', [produto_id]);
+      const produto = await client.query(
+        `
+        SELECT *
+        FROM produtos
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [produto_id],
+      );
 
       if (produto.rows.length === 0) {
-        throw new Error('Produto não encontrado');
+        throw new Error(`Produto ${produto_id} não encontrado`);
       }
 
       const prod = produto.rows[0];
@@ -482,7 +627,22 @@ async function atualizarPedido(req, res) {
       );
     }
 
-    const totalFinal = totalPedido - descontoFinal + acrescimoFinal;
+    let descontoCalculado = descontoValorFinal;
+    let acrescimoCalculado = acrescimoValorFinal;
+
+    if (descontoTipoFinal === 'percentual') {
+      descontoCalculado = (totalPedido * descontoValorFinal) / 100;
+    }
+
+    if (acrescimoTipoFinal === 'percentual') {
+      acrescimoCalculado = (totalPedido * acrescimoValorFinal) / 100;
+    }
+
+    const totalFinal = totalPedido - descontoCalculado + acrescimoCalculado;
+
+    if (totalFinal < 0) {
+      throw new Error('O total final do pedido não pode ser negativo');
+    }
 
     const result = await client.query(
       `
@@ -491,12 +651,30 @@ async function atualizarPedido(req, res) {
           total = $2,
           status = $3,
           origem = $4,
-          desconto = $5,
-          acrescimo = $6
-      WHERE id = $7
+          desconto_tipo = $5,
+          desconto_valor = $6,
+          acrescimo_tipo = $7,
+          acrescimo_valor = $8,
+          forma_pagamento = $9,
+          valor_recebido = $10,
+          troco = $11
+      WHERE id = $12
       RETURNING *
       `,
-      [cliente_id, totalFinal, statusFinal, origemFinal, descontoFinal, acrescimoFinal, id],
+      [
+        cliente_id,
+        totalFinal,
+        statusFinal,
+        origemFinal,
+        descontoTipoFinal,
+        descontoValorFinal,
+        acrescimoTipoFinal,
+        acrescimoValorFinal,
+        forma_pagamento ?? null,
+        valor_recebido ?? null,
+        troco ?? null,
+        id,
+      ],
     );
 
     await client.query('COMMIT');
@@ -504,10 +682,28 @@ async function atualizarPedido(req, res) {
     return res.json({
       sucesso: true,
       pedido: result.rows[0],
+      resumo: {
+        total_produtos: totalPedido,
+        desconto: descontoCalculado,
+        acrescimo: acrescimoCalculado,
+        total: totalFinal,
+      },
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    return res.status(500).json({ erro: err.message });
+
+    const errosDeRegra = [
+      'Produto',
+      'Estoque insuficiente',
+      'O total final do pedido não pode ser negativo',
+      'Pedido cancelado não pode ser editado',
+    ];
+
+    const statusCode = errosDeRegra.some((msg) => err.message.includes(msg)) ? 400 : 500;
+
+    return res.status(statusCode).json({
+      erro: err.message || 'Erro interno ao atualizar pedido',
+    });
   } finally {
     client.release();
   }

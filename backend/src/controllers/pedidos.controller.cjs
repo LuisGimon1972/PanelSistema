@@ -651,14 +651,16 @@ async function atualizarPedido(req, res) {
           total = $2,
           status = $3,
           origem = $4,
-          desconto_tipo = $5,
-          desconto_valor = $6,
-          acrescimo_tipo = $7,
-          acrescimo_valor = $8,
-          forma_pagamento = $9,
-          valor_recebido = $10,
-          troco = $11
-      WHERE id = $12
+          desconto = $5,
+          acrescimo = $6,
+          desconto_tipo = $7,
+          desconto_valor = $8,
+          acrescimo_tipo = $9,
+          acrescimo_valor = $10,
+          forma_pagamento = $11,
+          valor_recebido = $12,
+          troco = $13
+      WHERE id = $14
       RETURNING *
       `,
       [
@@ -666,6 +668,8 @@ async function atualizarPedido(req, res) {
         totalFinal,
         statusFinal,
         origemFinal,
+        descontoCalculado,
+        acrescimoCalculado,
         descontoTipoFinal,
         descontoValorFinal,
         acrescimoTipoFinal,

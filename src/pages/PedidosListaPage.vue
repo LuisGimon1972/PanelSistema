@@ -310,6 +310,8 @@ const columns = [
   { name: 'cliente_nome', label: 'Cliente', field: 'cliente_nome', align: 'left' as const },
   { name: 'data', label: 'Data', field: 'data', align: 'left' as const },
   { name: 'status', label: 'Status', field: 'status', align: 'left' as const },
+  { name: 'desconto', label: 'Desconto', field: 'desconto', align: 'left' as const },
+  { name: 'acrescimo', label: 'Acréscimo', field: 'acrescimo', align: 'left' as const },
   { name: 'total', label: 'Total', field: 'total', align: 'left' as const },
   { name: 'acoes', label: 'Ações', field: 'acoes', align: 'center' as const },
 ];

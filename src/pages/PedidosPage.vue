@@ -627,7 +627,6 @@ async function salvarPedido() {
   }
 
   salvando.value = true;
-  alert(descontoCalculado.value);
 
   try {
     const payload = {

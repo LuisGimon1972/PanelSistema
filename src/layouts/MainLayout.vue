@@ -64,7 +64,7 @@
           <q-item-section avatar>
             <q-icon name="receipt_long" />
           </q-item-section>
-          <q-item-section>Listagem de Pedidos</q-item-section>
+          <q-item-section>Pedidos e Vendas</q-item-section>
         </q-item>
 
         <q-item clickable to="/pdv" active-class="menu-active">

@@ -1,7 +1,6 @@
 <template>
   <q-page class="bg-grey-2 q-pa-md">
     <div class="row q-col-gutter-md items-start">
-      <!-- ESQUERDA -->
       <div class="col-12 col-md-7">
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
@@ -12,7 +11,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- CLIENTE -->
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Cliente da Venda</div>
@@ -36,7 +34,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- BUSCA DE PRODUTOS -->
         <q-card flat bordered class="border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Produtos</div>
@@ -65,7 +62,7 @@
                 >
                   <q-item-section>
                     <q-item-label>{{ produto.nome }}</q-item-label>
-                    <q-item-label caption> Estoque: {{ produto.estoque }} </q-item-label>
+                    <q-item-label caption>Estoque: {{ produto.estoque }}</q-item-label>
                   </q-item-section>
 
                   <q-item-section side>
@@ -90,7 +87,6 @@
         </q-card>
       </div>
 
-      <!-- DIREITA -->
       <div class="col-12 col-md-5">
         <q-card flat bordered class="sticky-card border">
           <q-card-section>
@@ -105,7 +101,7 @@
 
             <q-separator class="q-my-md" />
 
-            <div v-if="carrinho.length === 0" class="text-grey-7 text-center q-py-lg">
+            <div v-if="carrinho.length === 0" class="text-grey-7 text-center q-py-xl">
               Nenhum item adicionado
             </div>
 
@@ -175,22 +171,168 @@
               <strong>{{ totalItens }}</strong>
             </div>
 
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="descontoValor"
+                  type="number"
+                  min="0"
+                  :max="descontoTipo === 'percentual' ? 100 : undefined"
+                  outlined
+                  label="Desconto"
+                  dense
+                >
+                  <template #prepend>
+                    <q-btn-toggle
+                      v-model="descontoTipo"
+                      no-caps
+                      unelevated
+                      dense
+                      toggle-color="primary"
+                      color="white"
+                      text-color="primary"
+                      :options="[
+                        { label: 'R$', value: 'valor' },
+                        { label: '%', value: 'percentual' },
+                      ]"
+                    />
+                  </template>
+                </q-input>
+              </div>
+
+              <div class="col-12 col-sm-6">
+                <q-input
+                  v-model.number="acrescimoValor"
+                  type="number"
+                  min="0"
+                  :max="acrescimoTipo === 'percentual' ? 100 : undefined"
+                  outlined
+                  label="Acréscimo"
+                  dense
+                >
+                  <template #prepend>
+                    <q-btn-toggle
+                      v-model="acrescimoTipo"
+                      no-caps
+                      unelevated
+                      dense
+                      toggle-color="primary"
+                      color="white"
+                      text-color="primary"
+                      :options="[
+                        { label: 'R$', value: 'valor' },
+                        { label: '%', value: 'percentual' },
+                      ]"
+                    />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">Subtotal</span>
+              <strong>{{ formatarMoeda(subtotalVenda) }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">
+                Desconto
+                <small v-if="descontoTipo === 'percentual'">({{ descontoValor }}%)</small>
+              </span>
+              <strong>{{ formatarMoeda(descontoCalculado) }}</strong>
+            </div>
+
+            <div class="row justify-between q-mb-sm">
+              <span class="text-grey-7">
+                Acréscimo
+                <small v-if="acrescimoTipo === 'percentual'">({{ acrescimoValor }}%)</small>
+              </span>
+              <strong>{{ formatarMoeda(acrescimoCalculado) }}</strong>
+            </div>
+
             <div class="row justify-between q-mb-md">
               <span class="text-grey-7">Total</span>
               <strong class="text-primary text-h5">
                 {{ formatarMoeda(totalVenda) }}
               </strong>
             </div>
-
+            <q-separator class="q-my-md" />
             <q-btn
-              color="positive"
+              color="primary"
               icon="point_of_sale"
-              label="Finalizar Venda"
+              label="Faturar"
               class="full-width"
               :disable="carrinho.length === 0"
-              :loading="finalizando"
-              @click="finalizarVenda"
+              @click="modalFaturar = true"
             />
+
+            <!-- FORMA DE PAGAMENTO -->
+            <q-dialog v-model="modalFaturar">
+              <q-card style="min-width: 350px; max-width: 500px; width: 100%">
+                <q-card-section>
+                  <div class="text-h6">Faturamento</div>
+                </q-card-section>
+
+                <q-card-section>
+                  <!-- FORMA DE PAGAMENTO -->
+                  <div class="q-mb-md">
+                    <q-btn-toggle
+                      v-model="formaPagamento"
+                      spread
+                      unelevated
+                      toggle-color="primary"
+                      color="white"
+                      text-color="primary"
+                      :options="[
+                        { label: 'Dinheiro', value: 'DINHEIRO', icon: 'payments' },
+                        { label: 'Cartão', value: 'CARTAO', icon: 'credit_card' },
+                        { label: 'PIX', value: 'PIX', icon: 'qr_code' },
+                      ]"
+                    />
+                  </div>
+
+                  <!-- TOTAL -->
+                  <div class="row justify-between q-mb-md">
+                    <span class="text-grey-7">Total</span>
+                    <strong class="text-primary text-h6">
+                      {{ formatarMoeda(totalVenda) }}
+                    </strong>
+                  </div>
+
+                  <!-- VALOR RECEBIDO -->
+                  <div v-if="formaPagamento === 'DINHEIRO'" class="q-mb-md">
+                    <q-input
+                      v-model.number="valorRecebido"
+                      type="number"
+                      min="0"
+                      outlined
+                      label="Valor recebido"
+                    />
+                  </div>
+
+                  <!-- TROCO -->
+                  <div v-if="formaPagamento === 'DINHEIRO'" class="row justify-between q-mb-md">
+                    <span class="text-grey-7">Troco</span>
+                    <strong class="text-positive text-h6">
+                      {{ formatarMoeda(troco) }}
+                    </strong>
+                  </div>
+                </q-card-section>
+
+                <q-card-actions align="right">
+                  <q-btn flat label="Cancelar" v-close-popup />
+
+                  <q-btn
+                    color="positive"
+                    icon="check"
+                    label="Confirmar"
+                    :loading="finalizando"
+                    @click="finalizarVenda"
+                    v-close-popup
+                  />
+                </q-card-actions>
+              </q-card>
+            </q-dialog>
           </q-card-section>
         </q-card>
       </div>
@@ -199,12 +341,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Notify } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3000';
+
+type TipoAjuste = 'valor' | 'percentual';
 
 interface Cliente {
   id: number;
@@ -250,6 +394,12 @@ const clienteSelecionado = ref<number | null>(null);
 
 const carrinho = ref<ItemCarrinho[]>([]);
 
+const descontoTipo = ref<TipoAjuste>('valor');
+const descontoValor = ref<number>(0);
+
+const acrescimoTipo = ref<TipoAjuste>('valor');
+const acrescimoValor = ref<number>(0);
+
 const CLIENTE_PADRAO_NOME = 'Consumidor Final';
 
 const clientePadrao = computed(
@@ -260,6 +410,16 @@ const clienteFinalId = computed(() => clienteSelecionado.value || clientePadrao.
 
 const beep = new Audio('/src/assets/beep-02.mp3');
 const beepErro = new Audio('/src/assets/error-sounds.mp3');
+
+const modalFaturar = ref(false);
+const formaPagamento = ref<'DINHEIRO' | 'CARTAO' | 'PIX'>('DINHEIRO');
+const valorRecebido = ref<number>(0);
+
+const troco = computed(() => {
+  if (formaPagamento.value !== 'DINHEIRO') return 0;
+
+  return Math.max(0, Number(valorRecebido.value || 0) - totalVenda.value);
+});
 
 function tocarBeep() {
   beep.currentTime = 0;
@@ -287,7 +447,27 @@ const produtosFiltrados = computed(() => {
 
 const totalItens = computed(() => carrinho.value.reduce((acc, item) => acc + item.quantidade, 0));
 
-const totalVenda = computed(() => carrinho.value.reduce((acc, item) => acc + item.subtotal, 0));
+const subtotalVenda = computed(() => carrinho.value.reduce((acc, item) => acc + item.subtotal, 0));
+
+const descontoCalculado = computed(() => {
+  if (descontoTipo.value === 'percentual') {
+    return subtotalVenda.value * (Number(descontoValor.value || 0) / 100);
+  }
+
+  return Number(descontoValor.value || 0);
+});
+
+const acrescimoCalculado = computed(() => {
+  if (acrescimoTipo.value === 'percentual') {
+    return subtotalVenda.value * (Number(acrescimoValor.value || 0) / 100);
+  }
+
+  return Number(acrescimoValor.value || 0);
+});
+
+const totalVenda = computed(() =>
+  Math.max(0, subtotalVenda.value - descontoCalculado.value + acrescimoCalculado.value),
+);
 
 function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -351,7 +531,7 @@ async function buscarPorIdPro(id: number) {
 
     busca.value = '';
     focarBusca();
-  } catch (error) {
+  } catch {
     beepErro.play();
     Notify.create({
       type: 'negative',
@@ -373,11 +553,11 @@ async function buscarPorCodigo(codigo: string) {
 
     adicionarProduto(data);
 
-    tocarBeep(); // 🔊 AQUI
+    tocarBeep();
 
     busca.value = '';
     focarBusca();
-  } catch (error) {
+  } catch {
     beepErro.play();
     Notify.create({
       type: 'negative',
@@ -409,8 +589,8 @@ function adicionarProduto(produto: Produto) {
       });
       return;
     }
-    tocarBeep();
 
+    tocarBeep();
     itemExistente.quantidade += 1;
     itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
   } else {
@@ -483,6 +663,20 @@ async function finalizarVenda() {
       cliente_id: clienteFinalId.value,
       origem: 'PDV',
       status: 'FINALIZADO',
+
+      desconto: Number(descontoCalculado.value || 0),
+      acrescimo: Number(acrescimoCalculado.value || 0),
+
+      desconto_tipo: descontoTipo.value,
+      desconto_valor: Number(descontoValor.value || 0),
+
+      acrescimo_tipo: acrescimoTipo.value,
+      acrescimo_valor: Number(acrescimoValor.value || 0),
+
+      forma_pagamento: formaPagamento.value,
+      valor_recebido: Number(valorRecebido.value || 0),
+      troco: Number(troco.value || 0),
+
       itens: carrinho.value.map((item) => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
@@ -498,7 +692,16 @@ async function finalizarVenda() {
     clienteSelecionado.value = null;
     busca.value = '';
 
+    descontoTipo.value = 'valor';
+    descontoValor.value = 0;
+    acrescimoTipo.value = 'valor';
+    acrescimoValor.value = 0;
+    formaPagamento.value = 'DINHEIRO';
+    valorRecebido.value = 0;
+    troco.value || 0;
+
     await carregarProdutos();
+    focarBusca();
   } catch (error: unknown) {
     let mensagem = 'Erro ao finalizar venda';
 
@@ -515,8 +718,21 @@ async function finalizarVenda() {
   }
 }
 
+watch([descontoTipo, descontoValor], ([tipo, valor]) => {
+  if (tipo === 'percentual' && Number(valor) > 100) {
+    descontoValor.value = 100;
+  }
+});
+
+watch([acrescimoTipo, acrescimoValor], ([tipo, valor]) => {
+  if (tipo === 'percentual' && Number(valor) > 100) {
+    acrescimoValor.value = 100;
+  }
+});
+
 onMounted(async () => {
   await Promise.all([carregarClientes(), carregarProdutos()]);
+  focarBusca();
 });
 </script>
 
@@ -542,13 +758,13 @@ onMounted(async () => {
 }
 
 .lista-produtos {
-  height: 185px;
+  height: 280px;
   overflow-y: scroll;
   border: 1px solid #ddd;
 }
 
 .scroll-carrinho {
-  max-height: 270px; /* ~5 itens */
+  max-height: 170px;
   overflow-y: auto;
 }
 </style>

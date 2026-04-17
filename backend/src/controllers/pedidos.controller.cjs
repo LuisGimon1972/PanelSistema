@@ -15,6 +15,7 @@ async function criarPedido(req, res) {
     forma_pagamento,
     valor_recebido,
     troco,
+    pagamentos,
   } = req.body;
 
   const statusFinal = status || 'ABERTO';
@@ -29,6 +30,7 @@ async function criarPedido(req, res) {
   const statusValidos = ['ABERTO', 'FINALIZADO'];
   const origensValidas = ['PEDIDO', 'PDV'];
   const tiposValidos = ['valor', 'percentual'];
+  const formasValidas = ['DINHEIRO', 'PIX', 'CARTAO'];
 
   if (!tiposValidos.includes(descontoTipoFinal)) {
     return res.status(400).json({ erro: 'Tipo de desconto inválido' });
@@ -70,6 +72,23 @@ async function criarPedido(req, res) {
     }
   }
 
+  const pagamentosArray = Array.isArray(pagamentos) ? pagamentos : [];
+
+  for (const pagamento of pagamentosArray) {
+    const forma = pagamento?.forma;
+    const valor = Number(pagamento?.valor);
+
+    if (!formasValidas.includes(forma)) {
+      return res.status(400).json({ erro: `Forma de pagamento inválida: ${forma}` });
+    }
+
+    if (!Number.isFinite(valor) || valor < 0) {
+      return res.status(400).json({
+        erro: `Valor de pagamento inválido para ${forma}`,
+      });
+    }
+  }
+
   const client = await pool.connect();
 
   try {
@@ -79,38 +98,40 @@ async function criarPedido(req, res) {
 
     const resultPedido = await client.query(
       `
-  INSERT INTO pedidos (
-    cliente_id,
-    total,
-    status,
-    origem,
-    desconto,
-    acrescimo,
-    desconto_tipo,
-    desconto_valor,
-    acrescimo_tipo,
-    acrescimo_valor,
-    forma_pagamento,
-    valor_recebido,
-    troco
-  )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-  RETURNING id
-  `,
+      INSERT INTO pedidos (
+        cliente_id,
+        total,
+        status,
+        origem,
+        desconto,
+        acrescimo,
+        desconto_tipo,
+        desconto_valor,
+        acrescimo_tipo,
+        acrescimo_valor,
+        forma_pagamento,
+        valor_recebido,
+        troco,
+        pagamentos
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
+      RETURNING id
+      `,
       [
         cliente_id,
-        0, // total ainda será atualizado
+        0,
         statusFinal,
         origemFinal,
-        0, // desconto (vamos atualizar depois)
-        0, // acrescimo (vamos atualizar depois)
+        0,
+        0,
         descontoTipoFinal,
         descontoValorFinal,
         acrescimoTipoFinal,
         acrescimoValorFinal,
-        forma_pagamento ?? null,
-        valor_recebido ?? null,
-        troco ?? null,
+        null,
+        null,
+        null,
+        JSON.stringify(pagamentosArray),
       ],
     );
 
@@ -187,15 +208,52 @@ async function criarPedido(req, res) {
       throw new Error('O total final do pedido não pode ser negativo');
     }
 
+    const totalPagoCalculado = pagamentosArray.reduce(
+      (acc, pagamento) => acc + Number(pagamento.valor || 0),
+      0,
+    );
+
+    const totalDinheiro = pagamentosArray
+      .filter((pagamento) => pagamento.forma === 'DINHEIRO')
+      .reduce((acc, pagamento) => acc + Number(pagamento.valor || 0), 0);
+
+    const excessoPagamento = totalPagoCalculado - totalFinal;
+    const trocoCalculado = excessoPagamento > 0 ? Math.min(excessoPagamento, totalDinheiro) : 0;
+
+    const formaPagamentoFinal =
+      pagamentosArray.length === 0
+        ? (forma_pagamento ?? null)
+        : pagamentosArray.length === 1
+          ? pagamentosArray[0].forma
+          : 'COMBINADO';
+
+    const valorRecebidoFinal =
+      pagamentosArray.length === 0 ? (valor_recebido ?? null) : totalPagoCalculado;
+
+    const trocoFinal = pagamentosArray.length === 0 ? (troco ?? null) : trocoCalculado;
+
     await client.query(
       `
-  UPDATE pedidos
-  SET total = $1,
-      desconto = $2,
-      acrescimo = $3
-  WHERE id = $4
-  `,
-      [totalFinal, descontoCalculado, acrescimoCalculado, pedidoId],
+      UPDATE pedidos
+      SET total = $1,
+          desconto = $2,
+          acrescimo = $3,
+          forma_pagamento = $4,
+          valor_recebido = $5,
+          troco = $6,
+          pagamentos = $7::jsonb
+      WHERE id = $8
+      `,
+      [
+        totalFinal,
+        descontoCalculado,
+        acrescimoCalculado,
+        formaPagamentoFinal,
+        valorRecebidoFinal,
+        trocoFinal,
+        JSON.stringify(pagamentosArray),
+        pedidoId,
+      ],
     );
 
     await client.query('COMMIT');
@@ -207,6 +265,10 @@ async function criarPedido(req, res) {
       total_produtos: totalPedido,
       desconto: descontoCalculado,
       acrescimo: acrescimoCalculado,
+      forma_pagamento: formaPagamentoFinal,
+      valor_recebido: valorRecebidoFinal,
+      troco: trocoFinal,
+      pagamentos: pagamentosArray,
       total: totalFinal,
     });
   } catch (err) {
@@ -445,6 +507,7 @@ async function atualizarPedido(req, res) {
     forma_pagamento,
     valor_recebido,
     troco,
+    pagamentos,
   } = req.body;
 
   if (cliente_id == null || !Array.isArray(itens) || itens.length === 0) {
@@ -465,6 +528,7 @@ async function atualizarPedido(req, res) {
   const statusValidos = ['ABERTO', 'FINALIZADO'];
   const origensValidas = ['PEDIDO', 'PDV'];
   const tiposValidos = ['valor', 'percentual'];
+  const formasValidas = ['DINHEIRO', 'PIX', 'CARTAO'];
 
   if (!tiposValidos.includes(descontoTipoFinal)) {
     return res.status(400).json({
@@ -510,6 +574,25 @@ async function atualizarPedido(req, res) {
     ) {
       return res.status(400).json({
         erro: 'Cada item deve ter produto_id e quantidade maior que zero',
+      });
+    }
+  }
+
+  const pagamentosArray = Array.isArray(pagamentos) ? pagamentos : [];
+
+  for (const pagamento of pagamentosArray) {
+    const forma = pagamento?.forma;
+    const valor = Number(pagamento?.valor);
+
+    if (!formasValidas.includes(forma)) {
+      return res.status(400).json({
+        erro: `Forma de pagamento inválida: ${forma}`,
+      });
+    }
+
+    if (!Number.isFinite(valor) || valor < 0) {
+      return res.status(400).json({
+        erro: `Valor de pagamento inválido para ${forma}`,
       });
     }
   }
@@ -644,6 +727,30 @@ async function atualizarPedido(req, res) {
       throw new Error('O total final do pedido não pode ser negativo');
     }
 
+    const totalPagoCalculado = pagamentosArray.reduce(
+      (acc, pagamento) => acc + Number(pagamento.valor || 0),
+      0,
+    );
+
+    const totalDinheiro = pagamentosArray
+      .filter((pagamento) => pagamento.forma === 'DINHEIRO')
+      .reduce((acc, pagamento) => acc + Number(pagamento.valor || 0), 0);
+
+    const excessoPagamento = totalPagoCalculado - totalFinal;
+    const trocoCalculado = excessoPagamento > 0 ? Math.min(excessoPagamento, totalDinheiro) : 0;
+
+    const formaPagamentoFinal =
+      pagamentosArray.length === 0
+        ? (forma_pagamento ?? null)
+        : pagamentosArray.length === 1
+          ? pagamentosArray[0].forma
+          : 'COMBINADO';
+
+    const valorRecebidoFinal =
+      pagamentosArray.length === 0 ? (valor_recebido ?? null) : totalPagoCalculado;
+
+    const trocoFinal = pagamentosArray.length === 0 ? (troco ?? null) : trocoCalculado;
+
     const result = await client.query(
       `
       UPDATE pedidos
@@ -659,8 +766,9 @@ async function atualizarPedido(req, res) {
           acrescimo_valor = $10,
           forma_pagamento = $11,
           valor_recebido = $12,
-          troco = $13
-      WHERE id = $14
+          troco = $13,
+          pagamentos = $14::jsonb
+      WHERE id = $15
       RETURNING *
       `,
       [
@@ -674,9 +782,10 @@ async function atualizarPedido(req, res) {
         descontoValorFinal,
         acrescimoTipoFinal,
         acrescimoValorFinal,
-        forma_pagamento ?? null,
-        valor_recebido ?? null,
-        troco ?? null,
+        formaPagamentoFinal,
+        valorRecebidoFinal,
+        trocoFinal,
+        JSON.stringify(pagamentosArray),
         id,
       ],
     );
@@ -690,6 +799,10 @@ async function atualizarPedido(req, res) {
         total_produtos: totalPedido,
         desconto: descontoCalculado,
         acrescimo: acrescimoCalculado,
+        forma_pagamento: formaPagamentoFinal,
+        valor_recebido: valorRecebidoFinal,
+        troco: trocoFinal,
+        pagamentos: pagamentosArray,
         total: totalFinal,
       },
     });

@@ -1,7 +1,6 @@
 <template>
   <q-page padding class="bg-grey-2">
     <div class="row q-col-gutter-md items-start">
-      <!-- BLOCO ESQUERDO -->
       <div class="col-12 col-md-8">
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
@@ -45,7 +44,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- CLIENTE -->
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Cliente</div>
@@ -67,7 +65,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- ADICIONAR PRODUTO -->
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Adicionar Produto</div>
@@ -121,7 +118,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- ITENS -->
         <q-card flat bordered class="border">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Itens do Pedido</div>
@@ -163,7 +159,6 @@
         </q-card>
       </div>
 
-      <!-- BLOCO DIREITO -->
       <div class="col-12 col-md-4">
         <q-card flat bordered class="sticky-card border">
           <q-card-section>
@@ -188,13 +183,6 @@
               <strong>{{ itens.length }}</strong>
             </div>
 
-            <div class="row justify-between q-mb-md">
-              <span class="text-grey-7">Total</span>
-              <strong class="text-primary text-h6">
-                {{ formatarMoeda(totalPedido) }}
-              </strong>
-            </div>
-
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col-12 col-sm-6">
                 <q-input
@@ -205,10 +193,6 @@
                   outlined
                   label="Desc."
                   dense
-                  :rules="[
-                    (val) => Number(val) >= 0 || 'Valor inválido',
-                    (val) => descontoTipo !== 'percentual' || Number(val) <= 99 || 'Máx. 99%',
-                  ]"
                 >
                   <template #prepend>
                     <q-btn-toggle
@@ -235,6 +219,7 @@
                   v-model.number="acrescimoValor"
                   type="number"
                   min="0"
+                  :max="acrescimoTipo === 'percentual' ? 99 : undefined"
                   outlined
                   label="Acréscimo"
                   dense
@@ -289,19 +274,129 @@
             </div>
 
             <q-btn
-              color="positive"
+              v-if="statusPedido === 'ABERTO'"
+              color="primary"
               icon="save"
-              label="Salvar Pedido"
+              label="Finalizar"
               class="full-width"
               :disable="!podeSalvar"
               :loading="salvando"
               style="border-radius: 12px"
-              @click="salvarPedido"
+              @click="finalizarPedidoAberto"
+            />
+
+            <q-btn
+              v-else-if="statusPedido === 'FINALIZADO'"
+              color="positive"
+              icon="point_of_sale"
+              label="Faturar"
+              class="full-width"
+              :disable="!podeSalvar"
+              :loading="salvando"
+              style="border-radius: 12px"
+              @click="modalFaturar = true"
             />
           </q-card-section>
         </q-card>
       </div>
     </div>
+
+    <q-dialog v-model="modalFaturar" persistent>
+      <q-card style="min-width: 420px; width: 100%; max-width: 650px">
+        <q-card-section>
+          <div class="text-h6">Faturamento do Pedido</div>
+        </q-card-section>
+
+        <q-card-section>
+          <div
+            v-for="(pagamento, index) in pagamentos"
+            :key="index"
+            class="row q-col-gutter-sm q-mb-sm"
+          >
+            <div class="col-5">
+              <q-select
+                v-model="pagamento.forma"
+                :options="[
+                  { label: 'Dinheiro', value: 'DINHEIRO' },
+                  { label: 'Cartão', value: 'CARTAO' },
+                  { label: 'PIX', value: 'PIX' },
+                ]"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Forma"
+              />
+            </div>
+
+            <div class="col-5">
+              <q-input
+                v-model.number="pagamento.valor"
+                type="number"
+                min="0"
+                outlined
+                dense
+                label="Valor"
+              />
+            </div>
+
+            <div class="col-2 flex flex-center">
+              <q-btn
+                flat
+                round
+                dense
+                color="negative"
+                icon="delete"
+                @click="removerPagamento(index)"
+                :disable="pagamentos.length === 1"
+              />
+            </div>
+          </div>
+
+          <q-btn
+            flat
+            color="primary"
+            icon="add"
+            label="Adicionar forma"
+            @click="adicionarPagamento"
+          />
+
+          <q-separator class="q-my-md" />
+
+          <div class="row justify-between q-mb-sm">
+            <span class="text-grey-7">Total do pedido</span>
+            <strong>{{ formatarMoeda(totalPedido) }}</strong>
+          </div>
+
+          <div class="row justify-between q-mb-sm">
+            <span class="text-grey-7">Total pago</span>
+            <strong>{{ formatarMoeda(totalPago) }}</strong>
+          </div>
+
+          <div class="row justify-between q-mb-sm">
+            <span class="text-grey-7">Falta pagar</span>
+            <strong class="text-negative">{{ formatarMoeda(faltaPagar) }}</strong>
+          </div>
+
+          <div class="row justify-between q-mb-md">
+            <span class="text-grey-7">Troco</span>
+            <strong class="text-positive text-h6">
+              {{ formatarMoeda(troco) }}
+            </strong>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" v-close-popup />
+          <q-btn
+            color="primary"
+            label="Confirmar"
+            :loading="salvando"
+            @click="confirmarFaturamento"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -312,10 +407,10 @@ import { Notify } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
 
-const tituloPagina = computed(() => (pedidoId.value ? 'Editar Pedido' : 'Novo Pedido'));
-
 const route = useRoute();
 const router = useRouter();
+
+const tituloPagina = computed(() => (pedidoId.value ? 'Editar Pedido' : 'Novo Pedido'));
 
 const statusOptions = [
   { label: 'ABERTO', value: 'ABERTO' },
@@ -324,9 +419,7 @@ const statusOptions = [
 ];
 
 const statusPedido = ref<'ABERTO' | 'FINALIZADO' | 'CANCELADO'>('ABERTO');
-
 const pedidoId = computed(() => (route.params.id ? Number(route.params.id) : null));
-
 const origemPedido = ref<'PEDIDO' | 'PDV'>('PEDIDO');
 
 function getStatusColor(status: string) {
@@ -342,41 +435,42 @@ function getStatusColor(status: string) {
   }
 }
 
-interface PedidoItemApi {
-  id: number;
-  produto_id: number;
-  nome_produto: string;
-  preco_unitario: number;
-  quantidade: number;
-  subtotal: number;
-}
+const formaSelecionada = ref<FormaPagamento>('DINHEIRO');
+const valorDigitado = ref(0);
+
+const formasPagamento = ref([
+  { tipo: 'DINHEIRO', label: 'DINHEIRO', icon: 'payments', hotkey: 'F5', valor: 0 },
+  { tipo: 'CARTAO', label: 'CARTÃO', icon: 'credit_card', valor: 0 },
+  { tipo: 'PIX', label: 'PIX - PAGAMENTO INTEGRADO', icon: 'qr_code', valor: 0 },
+]);
 
 type TipoAjuste = 'valor' | 'percentual';
+type FormaPagamento = 'DINHEIRO' | 'CARTAO' | 'PIX';
+type FormaPagamentoResumo = FormaPagamento | 'COMBINADO';
+
+type PagamentoPedido = {
+  forma: FormaPagamento;
+  valor: number;
+};
 
 type PedidoDetalhe = {
   id: number;
   cliente_id: number;
   cliente_nome: string;
-
   status: 'ABERTO' | 'FINALIZADO' | 'CANCELADO';
   origem: 'PEDIDO' | 'PDV';
-
   desconto: number;
   acrescimo: number;
-
   desconto_tipo: TipoAjuste;
   desconto_valor: number;
-
   acrescimo_tipo: TipoAjuste;
   acrescimo_valor: number;
-
-  forma_pagamento?: string | null;
+  forma_pagamento?: FormaPagamentoResumo | null;
   valor_recebido?: number | null;
   troco?: number | null;
-
+  pagamentos?: PagamentoPedido[] | null;
   total: number;
   data: string;
-
   itens: {
     produto_id: number;
     nome_produto: string;
@@ -429,22 +523,26 @@ const quantidade = ref<number>(1);
 const itens = ref<ItemPedido[]>([]);
 const salvando = ref(false);
 
-const desconto = ref<number>(0);
-const acrescimo = ref<number>(0);
-
-const descontoTipo = ref<'valor' | 'percentual'>('valor');
+const descontoTipo = ref<TipoAjuste>('valor');
 const descontoValor = ref<number>(0);
 
-const acrescimoTipo = ref<'valor' | 'percentual'>('valor');
+const acrescimoTipo = ref<TipoAjuste>('valor');
 const acrescimoValor = ref<number>(0);
 
+const modalFaturar = ref(false);
+const pagamentos = ref<PagamentoPedido[]>([{ forma: 'DINHEIRO', valor: 0 }]);
+
 const subtotalPedido = computed(() => itens.value.reduce((acc, item) => acc + item.subtotal, 0));
+
+function selecionarForma(tipo: FormaPagamento) {
+  formaSelecionada.value = tipo;
+  valorDigitado.value = 0;
+}
 
 const descontoCalculado = computed(() => {
   if (descontoTipo.value === 'percentual') {
     return subtotalPedido.value * (Number(descontoValor.value || 0) / 100);
   }
-
   return Number(descontoValor.value || 0);
 });
 
@@ -452,13 +550,30 @@ const acrescimoCalculado = computed(() => {
   if (acrescimoTipo.value === 'percentual') {
     return subtotalPedido.value * (Number(acrescimoValor.value || 0) / 100);
   }
-
   return Number(acrescimoValor.value || 0);
 });
 
 const totalPedido = computed(() =>
   Math.max(0, subtotalPedido.value - descontoCalculado.value + acrescimoCalculado.value),
 );
+
+const totalPago = computed(() =>
+  pagamentos.value.reduce((acc, item) => acc + Number(item.valor || 0), 0),
+);
+
+const totalEmDinheiro = computed(() =>
+  pagamentos.value
+    .filter((item) => item.forma === 'DINHEIRO')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0),
+);
+
+const faltaPagar = computed(() => Math.max(0, totalPedido.value - totalPago.value));
+
+const troco = computed(() => {
+  const excesso = totalPago.value - totalPedido.value;
+  if (excesso <= 0) return 0;
+  return Math.min(excesso, totalEmDinheiro.value);
+});
 
 const columns = [
   { name: 'nome', label: 'Produto', field: 'nome', align: 'left' as const },
@@ -477,9 +592,7 @@ const clienteAtual = computed(
 );
 
 const nomeClienteSelecionado = computed(() => clienteAtual.value?.nome || '');
-
 const totalItens = computed(() => itens.value.reduce((acc, item) => acc + item.quantidade, 0));
-
 const podeSalvar = computed(() => !!clienteSelecionado.value && itens.value.length > 0);
 
 function formatarMoeda(valor: number): string {
@@ -533,28 +646,19 @@ function filtrarProdutos(val: string, update: (fn: () => void) => void) {
 
 function adicionarItem() {
   if (!produtoSelecionado.value) {
-    Notify.create({
-      type: 'warning',
-      message: 'Selecione um produto',
-    });
+    Notify.create({ type: 'warning', message: 'Selecione um produto' });
     return;
   }
 
   if (!quantidade.value || quantidade.value <= 0) {
-    Notify.create({
-      type: 'warning',
-      message: 'Informe uma quantidade válida',
-    });
+    Notify.create({ type: 'warning', message: 'Informe uma quantidade válida' });
     return;
   }
 
   const produto = produtos.value.find((p) => p.id === produtoSelecionado.value);
 
   if (!produto) {
-    Notify.create({
-      type: 'negative',
-      message: 'Produto não encontrado',
-    });
+    Notify.create({ type: 'negative', message: 'Produto não encontrado' });
     return;
   }
 
@@ -602,27 +706,36 @@ function adicionarItem() {
 
 function removerItem(produtoId: number) {
   itens.value = itens.value.filter((item) => item.produto_id !== produtoId);
+  Notify.create({ type: 'info', message: 'Item removido' });
+}
 
-  Notify.create({
-    type: 'info',
-    message: 'Item removido',
+function adicionarPagamento() {
+  pagamentos.value.push({
+    forma: 'PIX',
+    valor: 0,
   });
+}
+
+function removerPagamento(index: number) {
+  pagamentos.value.splice(index, 1);
+
+  if (pagamentos.value.length === 0) {
+    pagamentos.value = [{ forma: 'DINHEIRO', valor: 0 }];
+  }
+}
+
+function resetarPagamentos() {
+  pagamentos.value = [{ forma: 'DINHEIRO', valor: 0 }];
 }
 
 async function salvarPedido() {
   if (!clienteSelecionado.value) {
-    Notify.create({
-      type: 'warning',
-      message: 'Selecione um cliente',
-    });
+    Notify.create({ type: 'warning', message: 'Selecione um cliente' });
     return;
   }
 
   if (itens.value.length === 0) {
-    Notify.create({
-      type: 'warning',
-      message: 'Adicione pelo menos um item',
-    });
+    Notify.create({ type: 'warning', message: 'Adicione pelo menos um item' });
     return;
   }
 
@@ -632,10 +745,130 @@ async function salvarPedido() {
     const payload = {
       cliente_id: Number(clienteSelecionado.value),
       status: statusPedido.value,
+      origem: origemPedido.value,
+      desconto: Number(descontoCalculado.value || 0),
+      acrescimo: Number(acrescimoCalculado.value || 0),
+      desconto_tipo: descontoTipo.value,
+      desconto_valor: Number(descontoValor.value || 0),
+      acrescimo_tipo: acrescimoTipo.value,
+      acrescimo_valor: Number(acrescimoValor.value || 0),
+      forma_pagamento: null,
+      valor_recebido: null,
+      troco: null,
+      pagamentos: [],
+      itens: itens.value.map((item) => ({
+        produto_id: Number(item.produto_id),
+        quantidade: Number(item.quantidade),
+      })),
+    };
+
+    if (pedidoId.value) {
+      if (statusPedido.value === 'CANCELADO') {
+        await api.put(`/pedidos/${pedidoId.value}/cancelar`);
+        Notify.create({ type: 'positive', message: 'Pedido cancelado com sucesso' });
+      } else {
+        await api.put(`/pedidos/${pedidoId.value}`, payload);
+        Notify.create({ type: 'positive', message: 'Pedido salvo com sucesso' });
+      }
+    } else {
+      await api.post('/pedidos', payload);
+      Notify.create({ type: 'positive', message: 'Pedido salvo com sucesso' });
+    }
+
+    resetFormulario();
+    await carregarProdutos();
+    await router.push('/pedidos/lista');
+  } catch (error: unknown) {
+    let mensagem = 'Erro ao salvar pedido';
+
+    if (axios.isAxiosError(error)) {
+      mensagem = error.response?.data?.erro || mensagem;
+    }
+
+    Notify.create({ type: 'negative', message: mensagem });
+  } finally {
+    salvando.value = false;
+  }
+}
+
+async function finalizarPedidoAberto() {
+  await salvarPedido();
+}
+
+async function confirmarFaturamento() {
+  if (pagamentos.value.length === 0) {
+    Notify.create({
+      type: 'warning',
+      message: 'Adicione pelo menos uma forma de pagamento',
+    });
+    return;
+  }
+
+  const possuiValorInvalido = pagamentos.value.some(
+    (item) => !Number.isFinite(Number(item.valor)) || Number(item.valor) < 0,
+  );
+
+  if (possuiValorInvalido) {
+    Notify.create({
+      type: 'warning',
+      message: 'Existe pagamento com valor inválido',
+    });
+    return;
+  }
+
+  if (totalPago.value < totalPedido.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'O total pago é menor que o valor do pedido',
+    });
+    return;
+  }
+
+  await salvarPedidoComPagamento();
+}
+
+async function salvarPedidoComPagamento() {
+  if (!clienteSelecionado.value) {
+    Notify.create({ type: 'warning', message: 'Selecione um cliente' });
+    return;
+  }
+
+  if (itens.value.length === 0) {
+    Notify.create({ type: 'warning', message: 'Adicione pelo menos um item' });
+    return;
+  }
+
+  salvando.value = true;
+
+  try {
+    const pagamentosPayload = pagamentos.value
+      .map((item) => ({
+        forma: item.forma,
+        valor: Number(item.valor || 0),
+      }))
+      .filter((item) => item.valor > 0);
+
+    if (pagamentosPayload.length === 0) {
+      Notify.create({
+        type: 'warning',
+        message: 'Informe pelo menos um pagamento válido',
+      });
+      return;
+    }
+
+    let formaPagamentoResumo: FormaPagamentoResumo = 'COMBINADO';
+
+    if (pagamentosPayload.length === 1) {
+      formaPagamentoResumo = pagamentosPayload[0]!.forma;
+    }
+
+    const payload = {
+      cliente_id: Number(clienteSelecionado.value),
+      status: statusPedido.value,
+      origem: origemPedido.value,
 
       desconto: Number(descontoCalculado.value || 0),
       acrescimo: Number(acrescimoCalculado.value || 0),
-      origem: origemPedido.value,
 
       desconto_tipo: descontoTipo.value,
       desconto_valor: Number(descontoValor.value || 0),
@@ -643,9 +876,10 @@ async function salvarPedido() {
       acrescimo_tipo: acrescimoTipo.value,
       acrescimo_valor: Number(acrescimoValor.value || 0),
 
-      forma_pagamento: 'Dinheiro',
-      valor_recebido: Number(totalPedido.value || 0),
-      troco: 0,
+      forma_pagamento: formaPagamentoResumo,
+      valor_recebido: Number(totalPago.value || 0),
+      troco: Number(troco.value || 0),
+      pagamentos: pagamentosPayload,
 
       itens: itens.value.map((item) => ({
         produto_id: Number(item.produto_id),
@@ -656,57 +890,45 @@ async function salvarPedido() {
     if (pedidoId.value) {
       if (statusPedido.value === 'CANCELADO') {
         await api.put(`/pedidos/${pedidoId.value}/cancelar`);
-
-        Notify.create({
-          type: 'positive',
-          message: 'Pedido cancelado com sucesso',
-        });
+        Notify.create({ type: 'positive', message: 'Pedido cancelado com sucesso' });
       } else {
         await api.put(`/pedidos/${pedidoId.value}`, payload);
-
-        Notify.create({
-          type: 'positive',
-          message: 'Pedido atualizado com sucesso',
-        });
+        Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
       }
     } else {
       await api.post('/pedidos', payload);
-
-      Notify.create({
-        type: 'positive',
-        message: 'Pedido salvo com sucesso',
-      });
+      Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
     }
 
-    clienteSelecionado.value = null;
-    produtoSelecionado.value = null;
-    quantidade.value = 1;
-    statusPedido.value = 'ABERTO';
-    origemPedido.value = 'PEDIDO';
-    itens.value = [];
-
-    descontoTipo.value = 'valor';
-    descontoValor.value = 0;
-
-    acrescimoTipo.value = 'valor';
-    acrescimoValor.value = 0;
-
+    resetFormulario();
     await carregarProdutos();
     await router.push('/pedidos/lista');
   } catch (error: unknown) {
-    let mensagem = 'Erro ao salvar pedido';
+    let mensagem = 'Erro ao faturar pedido';
 
     if (axios.isAxiosError(error)) {
       mensagem = error.response?.data?.erro || mensagem;
     }
 
-    Notify.create({
-      type: 'negative',
-      message: mensagem,
-    });
+    Notify.create({ type: 'negative', message: mensagem });
   } finally {
     salvando.value = false;
   }
+}
+
+function resetFormulario() {
+  clienteSelecionado.value = null;
+  produtoSelecionado.value = null;
+  quantidade.value = 1;
+  statusPedido.value = 'ABERTO';
+  origemPedido.value = 'PEDIDO';
+  itens.value = [];
+  descontoTipo.value = 'valor';
+  descontoValor.value = 0;
+  acrescimoTipo.value = 'valor';
+  acrescimoValor.value = 0;
+  modalFaturar.value = false;
+  resetarPagamentos();
 }
 
 async function carregarPedidoEdicao() {
@@ -718,12 +940,18 @@ async function carregarPedidoEdicao() {
     clienteSelecionado.value = data.cliente_id;
     statusPedido.value = data.status;
     origemPedido.value = data.origem;
-
     descontoTipo.value = data.desconto_tipo || 'valor';
     descontoValor.value = Number(data.desconto_valor || 0);
-
     acrescimoTipo.value = data.acrescimo_tipo || 'valor';
     acrescimoValor.value = Number(data.acrescimo_valor || 0);
+
+    pagamentos.value =
+      Array.isArray(data.pagamentos) && data.pagamentos.length > 0
+        ? data.pagamentos.map((item) => ({
+            forma: item.forma,
+            valor: Number(item.valor || 0),
+          }))
+        : [{ forma: 'DINHEIRO', valor: 0 }];
 
     itens.value = data.itens.map((item) => ({
       produto_id: item.produto_id,
@@ -739,11 +967,7 @@ async function carregarPedidoEdicao() {
       mensagem = error.response?.data?.erro || mensagem;
     }
 
-    Notify.create({
-      type: 'negative',
-      message: mensagem,
-    });
-
+    Notify.create({ type: 'negative', message: mensagem });
     await router.push('/pedidos/lista');
   }
 }
@@ -751,6 +975,12 @@ async function carregarPedidoEdicao() {
 watch([descontoTipo, descontoValor], ([tipo, valor]) => {
   if (tipo === 'percentual' && Number(valor) > 99) {
     descontoValor.value = 99;
+  }
+});
+
+watch([acrescimoTipo, acrescimoValor], ([tipo, valor]) => {
+  if (tipo === 'percentual' && Number(valor) > 99) {
+    acrescimoValor.value = 99;
   }
 });
 
@@ -762,14 +992,3 @@ onMounted(async () => {
   }
 });
 </script>
-
-<style scoped>
-.sticky-card {
-  position: sticky;
-  top: 20px;
-}
-
-.border {
-  border-radius: 12px;
-}
-</style>

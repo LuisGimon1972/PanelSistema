@@ -42,6 +42,9 @@ CREATE TABLE IF NOT EXISTS pedidos (
 );
 
 /*ALTER TABLE pedidos
+ADD COLUMN pagamentos JSONB;*/
+
+/*ALTER TABLE pedidos
 ADD COLUMN desconto_tipo VARCHAR(20) DEFAULT 'valor',
 ADD COLUMN desconto_valor NUMERIC(12,2) DEFAULT 0,
 ADD COLUMN acrescimo_tipo VARCHAR(20) DEFAULT 'valor',

@@ -459,24 +459,31 @@ watch(modalFaturar, async (abriu) => {
   }, 200);
 });
 
+const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
 const totalPago = computed(() => {
-  return pagamentos.value.reduce((total, item) => {
+  const total = pagamentos.value.reduce((total, item) => {
     return total + (Number(item.valor) || 0);
   }, 0);
+
+  return round2(total);
 });
 
-const totalEmDinheiro = computed(() =>
-  pagamentos.value
+const totalEmDinheiro = computed(() => {
+  const total = pagamentos.value
     .filter((item) => item.forma === 'DINHEIRO')
-    .reduce((acc, item) => acc + Number(item.valor || 0), 0),
-);
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
 
-const faltaPagar = computed(() => Math.max(0, totalVenda.value - totalPago.value));
+  return round2(total);
+});
+
+const faltaPagar = computed(() => round2(Math.max(0, totalVenda.value - totalPago.value)));
 
 const troco = computed(() => {
-  const excesso = totalPago.value - totalVenda.value;
+  const excesso = round2(totalPago.value - totalVenda.value);
   if (excesso <= 0) return 0;
-  return Math.min(excesso, totalEmDinheiro.value);
+
+  return round2(Math.min(excesso, totalEmDinheiro.value));
 });
 
 function tocarBeep() {

@@ -302,70 +302,51 @@
     </div>
 
     <q-dialog v-model="modalFaturar" persistent>
-      <q-card style="min-width: 420px; width: 100%; max-width: 650px">
+      <q-card class="border" style="width: 450px">
         <q-card-section>
-          <div class="text-h6">Faturamento do Pedido</div>
+          <div class="text-h6">Faturamento</div>
         </q-card-section>
 
         <q-card-section>
           <div
             v-for="(pagamento, index) in pagamentos"
-            :key="index"
-            class="row q-col-gutter-sm q-mb-sm"
+            :key="pagamento.forma"
+            class="row items-center q-col-gutter-sm q-mb-sm"
           >
-            <div class="col-5">
-              <q-select
-                v-model="pagamento.forma"
-                :options="[
-                  { label: 'Dinheiro', value: 'DINHEIRO' },
-                  { label: 'Cartão', value: 'CARTAO' },
-                  { label: 'PIX', value: 'PIX' },
-                ]"
-                emit-value
-                map-options
-                outlined
-                dense
-                label="Forma"
-              />
+            <div class="col-4">
+              <div class="text-subtitle2">
+                {{ pagamento.label }}
+              </div>
             </div>
 
-            <div class="col-5">
+            <div class="col-8">
               <q-input
+                :ref="criarPagamentoRef(index)"
                 v-model.number="pagamento.valor"
                 type="number"
                 min="0"
+                step="0.01"
                 outlined
                 dense
-                label="Valor"
-              />
-            </div>
-
-            <div class="col-2 flex flex-center">
-              <q-btn
-                flat
-                round
-                dense
-                color="negative"
-                icon="delete"
-                @click="removerPagamento(index)"
-                :disable="pagamentos.length === 1"
-              />
+                class="sem-setas"
+                input-class="text-right"
+                placeholder="0,00"
+                :label="`Valor em ${pagamento.label}`"
+              >
+                <template #prepend>
+                  <span class="text-blue-7 text-caption">R$</span>
+                </template>
+              </q-input>
             </div>
           </div>
-
-          <q-btn
-            flat
-            color="primary"
-            icon="add"
-            label="Adicionar forma"
-            @click="adicionarPagamento"
-          />
 
           <q-separator class="q-my-md" />
 
           <div class="row justify-between q-mb-sm">
-            <span class="text-grey-7">Total do pedido</span>
-            <strong>{{ formatarMoeda(totalPedido) }}</strong>
+            <span class="text-grey-7">Total</span>
+            <strong class="text-primary text-h6">
+              {{ formatarMoeda(totalPedido) }}
+            </strong>
           </div>
 
           <div class="row justify-between q-mb-sm">
@@ -375,7 +356,9 @@
 
           <div class="row justify-between q-mb-sm">
             <span class="text-grey-7">Falta pagar</span>
-            <strong class="text-negative">{{ formatarMoeda(faltaPagar) }}</strong>
+            <strong class="text-negative">
+              {{ formatarMoeda(faltaPagar) }}
+            </strong>
           </div>
 
           <div class="row justify-between q-mb-md">
@@ -389,10 +372,11 @@
         <q-card-actions align="right">
           <q-btn flat label="Cancelar" v-close-popup />
           <q-btn
-            color="primary"
+            color="positive"
+            icon="check"
             label="Confirmar"
             :loading="salvando"
-            @click="confirmarFaturamento"
+            @click="salvarPedidoComPagamento"
           />
         </q-card-actions>
       </q-card>
@@ -401,14 +385,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
+import { Notify, QInput } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
-import { Notify } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
 
 const route = useRoute();
 const router = useRouter();
+const finalizando = ref(false);
 
 const tituloPagina = computed(() => (pedidoId.value ? 'Editar Pedido' : 'Novo Pedido'));
 
@@ -437,12 +422,6 @@ function getStatusColor(status: string) {
 
 const formaSelecionada = ref<FormaPagamento>('DINHEIRO');
 const valorDigitado = ref(0);
-
-const formasPagamento = ref([
-  { tipo: 'DINHEIRO', label: 'DINHEIRO', icon: 'payments', hotkey: 'F5', valor: 0 },
-  { tipo: 'CARTAO', label: 'CARTÃO', icon: 'credit_card', valor: 0 },
-  { tipo: 'PIX', label: 'PIX - PAGAMENTO INTEGRADO', icon: 'qr_code', valor: 0 },
-]);
 
 type TipoAjuste = 'valor' | 'percentual';
 type FormaPagamento = 'DINHEIRO' | 'CARTAO' | 'PIX';
@@ -530,7 +509,77 @@ const acrescimoTipo = ref<TipoAjuste>('valor');
 const acrescimoValor = ref<number>(0);
 
 const modalFaturar = ref(false);
-const pagamentos = ref<PagamentoPedido[]>([{ forma: 'DINHEIRO', valor: 0 }]);
+
+const pagamentoRefs = ref<Array<InstanceType<typeof QInput> | null>>([]);
+
+function criarPagamentoRef(index: number) {
+  return (el: Element | ComponentPublicInstance | null) => {
+    pagamentoRefs.value[index] = el as InstanceType<typeof QInput> | null;
+  };
+}
+
+watch(modalFaturar, async (abriu) => {
+  if (!abriu) {
+    pagamentoRefs.value = [];
+    return;
+  }
+
+  await nextTick();
+
+  setTimeout(() => {
+    pagamentoRefs.value[0]?.focus();
+  }, 200);
+});
+
+type PagamentoLinha = {
+  forma: FormaPagamento;
+  label: string;
+  valor: number | null;
+};
+
+function getLabelFormaPagamento(forma: FormaPagamento): string {
+  switch (forma) {
+    case 'DINHEIRO':
+      return 'Dinheiro';
+    case 'CARTAO':
+      return 'Cartão';
+    case 'PIX':
+      return 'PIX';
+  }
+}
+
+function criarPagamentosIniciais(): PagamentoLinha[] {
+  return [
+    { forma: 'DINHEIRO', label: 'Dinheiro', valor: null },
+    { forma: 'CARTAO', label: 'Cartão', valor: null },
+    { forma: 'PIX', label: 'PIX', valor: null },
+  ];
+}
+
+const pagamentos = ref<PagamentoLinha[]>(criarPagamentosIniciais());
+
+function limparPagamentos() {
+  pagamentos.value = criarPagamentosIniciais();
+}
+
+function obterPagamentosValidos() {
+  return pagamentos.value
+    .map((item) => ({
+      forma: item.forma,
+      valor: Number(item.valor || 0),
+    }))
+    .filter((item) => item.valor > 0);
+}
+
+function obterFormaPagamentoResumo(
+  pagamentosValidos: Array<{ forma: FormaPagamento; valor: number }>,
+): FormaPagamentoResumo {
+  if (pagamentosValidos.length === 1) {
+    return pagamentosValidos[0]!.forma;
+  }
+
+  return 'COMBINADO';
+}
 
 const subtotalPedido = computed(() => itens.value.reduce((acc, item) => acc + item.subtotal, 0));
 
@@ -557,9 +606,11 @@ const totalPedido = computed(() =>
   Math.max(0, subtotalPedido.value - descontoCalculado.value + acrescimoCalculado.value),
 );
 
-const totalPago = computed(() =>
-  pagamentos.value.reduce((acc, item) => acc + Number(item.valor || 0), 0),
-);
+const totalPago = computed(() => {
+  return pagamentos.value.reduce((total, item) => {
+    return total + (Number(item.valor) || 0);
+  }, 0);
+});
 
 const totalEmDinheiro = computed(() =>
   pagamentos.value
@@ -709,25 +760,6 @@ function removerItem(produtoId: number) {
   Notify.create({ type: 'info', message: 'Item removido' });
 }
 
-function adicionarPagamento() {
-  pagamentos.value.push({
-    forma: 'PIX',
-    valor: 0,
-  });
-}
-
-function removerPagamento(index: number) {
-  pagamentos.value.splice(index, 1);
-
-  if (pagamentos.value.length === 0) {
-    pagamentos.value = [{ forma: 'DINHEIRO', valor: 0 }];
-  }
-}
-
-function resetarPagamentos() {
-  pagamentos.value = [{ forma: 'DINHEIRO', valor: 0 }];
-}
-
 async function salvarPedido() {
   if (!clienteSelecionado.value) {
     Notify.create({ type: 'warning', message: 'Selecione um cliente' });
@@ -838,33 +870,32 @@ async function salvarPedidoComPagamento() {
     return;
   }
 
+  const pagamentosPayload = obterPagamentosValidos();
+
+  if (pagamentosPayload.length === 0) {
+    Notify.create({
+      type: 'warning',
+      message: 'Informe pelo menos uma forma de pagamento',
+    });
+    return;
+  }
+
+  if (totalPago.value < totalPedido.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'O total pago é menor que o valor do pedido',
+    });
+    return;
+  }
+
   salvando.value = true;
 
   try {
-    const pagamentosPayload = pagamentos.value
-      .map((item) => ({
-        forma: item.forma,
-        valor: Number(item.valor || 0),
-      }))
-      .filter((item) => item.valor > 0);
-
-    if (pagamentosPayload.length === 0) {
-      Notify.create({
-        type: 'warning',
-        message: 'Informe pelo menos um pagamento válido',
-      });
-      return;
-    }
-
-    let formaPagamentoResumo: FormaPagamentoResumo = 'COMBINADO';
-
-    if (pagamentosPayload.length === 1) {
-      formaPagamentoResumo = pagamentosPayload[0]!.forma;
-    }
+    const formaPagamentoResumo = obterFormaPagamentoResumo(pagamentosPayload);
 
     const payload = {
       cliente_id: Number(clienteSelecionado.value),
-      status: statusPedido.value,
+      status: 'FINALIZADO',
       origem: origemPedido.value,
 
       desconto: Number(descontoCalculado.value || 0),
@@ -888,13 +919,8 @@ async function salvarPedidoComPagamento() {
     };
 
     if (pedidoId.value) {
-      if (statusPedido.value === 'CANCELADO') {
-        await api.put(`/pedidos/${pedidoId.value}/cancelar`);
-        Notify.create({ type: 'positive', message: 'Pedido cancelado com sucesso' });
-      } else {
-        await api.put(`/pedidos/${pedidoId.value}`, payload);
-        Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
-      }
+      await api.put(`/pedidos/${pedidoId.value}`, payload);
+      Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
     } else {
       await api.post('/pedidos', payload);
       Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
@@ -927,8 +953,8 @@ function resetFormulario() {
   descontoValor.value = 0;
   acrescimoTipo.value = 'valor';
   acrescimoValor.value = 0;
+  limparPagamentos();
   modalFaturar.value = false;
-  resetarPagamentos();
 }
 
 async function carregarPedidoEdicao() {
@@ -949,9 +975,10 @@ async function carregarPedidoEdicao() {
       Array.isArray(data.pagamentos) && data.pagamentos.length > 0
         ? data.pagamentos.map((item) => ({
             forma: item.forma,
+            label: getLabelFormaPagamento(item.forma),
             valor: Number(item.valor || 0),
           }))
-        : [{ forma: 'DINHEIRO', valor: 0 }];
+        : criarPagamentosIniciais();
 
     itens.value = data.itens.map((item) => ({
       produto_id: item.produto_id,
@@ -992,3 +1019,47 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.sticky-card {
+  position: sticky;
+  top: 20px;
+}
+
+@media (max-width: 1023px) {
+  .sticky-card {
+    position: static;
+  }
+}
+
+.border {
+  border-radius: 12px;
+}
+
+.lista-scroll {
+  max-height: calc(5 * 60px);
+  overflow-y: auto;
+}
+
+.lista-produtos {
+  height: 280px;
+  overflow-y: scroll;
+  border: 1px solid #ddd;
+}
+
+.scroll-carrinho {
+  max-height: 170px;
+  overflow-y: auto;
+}
+
+:deep(.sem-setas input::-webkit-outer-spin-button),
+:deep(.sem-setas input::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+:deep(.sem-setas input[type='number']) {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+</style>

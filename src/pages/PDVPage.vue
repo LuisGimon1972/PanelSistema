@@ -62,7 +62,7 @@
                 >
                   <q-item-section>
                     <q-item-label>{{ produto.nome }}</q-item-label>
-                    <q-item-label caption>Estoque: {{ produto.estoque }}</q-item-label>
+                    <q-item-label caption> Estoque: {{ produto.estoque }} </q-item-label>
                   </q-item-section>
 
                   <q-item-section side>
@@ -237,7 +237,7 @@
             <div class="row justify-between q-mb-sm">
               <span class="text-grey-7">
                 Desconto
-                <small v-if="descontoTipo === 'percentual'">({{ descontoValor }}%)</small>
+                <small v-if="descontoTipo === 'percentual'"> ({{ descontoValor }}%) </small>
               </span>
               <strong>{{ formatarMoeda(descontoCalculado) }}</strong>
             </div>
@@ -245,7 +245,7 @@
             <div class="row justify-between q-mb-sm">
               <span class="text-grey-7">
                 Acréscimo
-                <small v-if="acrescimoTipo === 'percentual'">({{ acrescimoValor }}%)</small>
+                <small v-if="acrescimoTipo === 'percentual'"> ({{ acrescimoValor }}%) </small>
               </span>
               <strong>{{ formatarMoeda(acrescimoCalculado) }}</strong>
             </div>
@@ -256,7 +256,9 @@
                 {{ formatarMoeda(totalVenda) }}
               </strong>
             </div>
+
             <q-separator class="q-my-md" />
+
             <q-btn
               color="primary"
               icon="point_of_sale"
@@ -267,51 +269,67 @@
             />
 
             <!-- FORMA DE PAGAMENTO -->
-            <q-dialog v-model="modalFaturar">
-              <q-card style="min-width: 350px; max-width: 500px; width: 100%">
+            <q-dialog v-model="modalFaturar" persistent>
+              <q-card class="border" style="width: 450px">
                 <q-card-section>
                   <div class="text-h6">Faturamento</div>
                 </q-card-section>
 
                 <q-card-section>
-                  <!-- FORMA DE PAGAMENTO -->
-                  <div class="q-mb-md">
-                    <q-btn-toggle
-                      v-model="formaPagamento"
-                      spread
-                      unelevated
-                      toggle-color="primary"
-                      color="white"
-                      text-color="primary"
-                      :options="[
-                        { label: 'Dinheiro', value: 'DINHEIRO', icon: 'payments' },
-                        { label: 'Cartão', value: 'CARTAO', icon: 'credit_card' },
-                        { label: 'PIX', value: 'PIX', icon: 'qr_code' },
-                      ]"
-                    />
+                  <div
+                    v-for="(pagamento, index) in pagamentos"
+                    :key="pagamento.forma"
+                    class="row items-center q-col-gutter-sm q-mb-sm"
+                  >
+                    <div class="col-4">
+                      <div class="text-subtitle2">
+                        {{ pagamento.label }}
+                      </div>
+                    </div>
+
+                    <div class="col-8">
+                      <q-input
+                        :ref="criarPagamentoRef(index)"
+                        v-model.number="pagamento.valor"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        outlined
+                        dense
+                        class="sem-setas"
+                        input-class="text-right"
+                        placeholder="0,00"
+                        :label="`Valor em ${pagamento.label}`"
+                      >
+                        <template #prepend>
+                          <span class="text-blue-7 text-caption">R$</span>
+                        </template>
+                      </q-input>
+                    </div>
                   </div>
 
-                  <!-- TOTAL -->
-                  <div class="row justify-between q-mb-md">
+                  <q-separator class="q-my-md" />
+
+                  <div class="row justify-between q-mb-sm">
                     <span class="text-grey-7">Total</span>
                     <strong class="text-primary text-h6">
                       {{ formatarMoeda(totalVenda) }}
                     </strong>
                   </div>
 
-                  <!-- VALOR RECEBIDO -->
-                  <div v-if="formaPagamento === 'DINHEIRO'" class="q-mb-md">
-                    <q-input
-                      v-model.number="valorRecebido"
-                      type="number"
-                      min="0"
-                      outlined
-                      label="Valor recebido"
-                    />
+                  <div class="row justify-between q-mb-sm">
+                    <span class="text-grey-7">Total pago</span>
+                    <strong>{{ formatarMoeda(totalPago) }}</strong>
                   </div>
 
-                  <!-- TROCO -->
-                  <div v-if="formaPagamento === 'DINHEIRO'" class="row justify-between q-mb-md">
+                  <div class="row justify-between q-mb-sm">
+                    <span class="text-grey-7">Falta pagar</span>
+                    <strong class="text-negative">
+                      {{ formatarMoeda(faltaPagar) }}
+                    </strong>
+                  </div>
+
+                  <div class="row justify-between q-mb-md">
                     <span class="text-grey-7">Troco</span>
                     <strong class="text-positive text-h6">
                       {{ formatarMoeda(troco) }}
@@ -321,14 +339,12 @@
 
                 <q-card-actions align="right">
                   <q-btn flat label="Cancelar" v-close-popup />
-
                   <q-btn
                     color="positive"
                     icon="check"
                     label="Confirmar"
                     :loading="finalizando"
                     @click="finalizarVenda"
-                    v-close-popup
                   />
                 </q-card-actions>
               </q-card>
@@ -341,8 +357,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { Notify } from 'quasar';
+import { computed, nextTick, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
+import { Notify, QInput } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
 
@@ -411,14 +427,56 @@ const clienteFinalId = computed(() => clienteSelecionado.value || clientePadrao.
 const beep = new Audio('/src/assets/beep-02.mp3');
 const beepErro = new Audio('/src/assets/error-sounds.mp3');
 
+type FormaPagamento = 'DINHEIRO' | 'CARTAO' | 'PIX';
+type FormaPagamentoResumo = FormaPagamento | 'COMBINADO';
+
+const pagamentos = ref([
+  { forma: 'DINHEIRO', label: 'Dinheiro', valor: null },
+  { forma: 'CARTAO', label: 'Cartão', valor: null },
+  { forma: 'PIX', label: 'PIX', valor: null },
+]);
+
 const modalFaturar = ref(false);
-const formaPagamento = ref<'DINHEIRO' | 'CARTAO' | 'PIX'>('DINHEIRO');
-const valorRecebido = ref<number>(0);
+
+const pagamentoRefs = ref<Array<InstanceType<typeof QInput> | null>>([]);
+
+function criarPagamentoRef(index: number) {
+  return (el: Element | ComponentPublicInstance | null) => {
+    pagamentoRefs.value[index] = el as InstanceType<typeof QInput> | null;
+  };
+}
+
+watch(modalFaturar, async (abriu) => {
+  if (!abriu) {
+    pagamentoRefs.value = [];
+    return;
+  }
+
+  await nextTick();
+
+  setTimeout(() => {
+    pagamentoRefs.value[0]?.focus();
+  }, 200);
+});
+
+const totalPago = computed(() => {
+  return pagamentos.value.reduce((total, item) => {
+    return total + (Number(item.valor) || 0);
+  }, 0);
+});
+
+const totalEmDinheiro = computed(() =>
+  pagamentos.value
+    .filter((item) => item.forma === 'DINHEIRO')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0),
+);
+
+const faltaPagar = computed(() => Math.max(0, totalVenda.value - totalPago.value));
 
 const troco = computed(() => {
-  if (formaPagamento.value !== 'DINHEIRO') return 0;
-
-  return Math.max(0, Number(valorRecebido.value || 0) - totalVenda.value);
+  const excesso = totalPago.value - totalVenda.value;
+  if (excesso <= 0) return 0;
+  return Math.min(excesso, totalEmDinheiro.value);
 });
 
 function tocarBeep() {
@@ -656,9 +714,34 @@ async function finalizarVenda() {
     return;
   }
 
+  const pagamentosPayload = pagamentos.value
+    .map((item) => ({
+      forma: item.forma,
+      valor: Number(item.valor || 0),
+    }))
+    .filter((item) => item.valor > 0);
+
+  if (pagamentosPayload.length === 0) {
+    Notify.create({
+      type: 'warning',
+      message: 'Informe pelo menos uma forma de pagamento',
+    });
+    return;
+  }
+
+  if (totalPago.value < totalVenda.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'O total pago é menor que o total da venda',
+    });
+    return;
+  }
+
   finalizando.value = true;
 
   try {
+    let formaPagamentoResumo: FormaPagamentoResumo = 'COMBINADO';
+
     await api.post('/pedidos', {
       cliente_id: clienteFinalId.value,
       origem: 'PDV',
@@ -673,9 +756,10 @@ async function finalizarVenda() {
       acrescimo_tipo: acrescimoTipo.value,
       acrescimo_valor: Number(acrescimoValor.value || 0),
 
-      forma_pagamento: formaPagamento.value,
-      valor_recebido: Number(valorRecebido.value || 0),
+      forma_pagamento: formaPagamentoResumo,
+      valor_recebido: Number(totalPago.value || 0),
       troco: Number(troco.value || 0),
+      pagamentos: pagamentosPayload,
 
       itens: carrinho.value.map((item) => ({
         produto_id: item.produto_id,
@@ -687,7 +771,7 @@ async function finalizarVenda() {
       type: 'positive',
       message: 'Venda realizada com sucesso',
     });
-
+    limparPagamentos();
     carrinho.value = [];
     clienteSelecionado.value = null;
     busca.value = '';
@@ -696,9 +780,8 @@ async function finalizarVenda() {
     descontoValor.value = 0;
     acrescimoTipo.value = 'valor';
     acrescimoValor.value = 0;
-    formaPagamento.value = 'DINHEIRO';
-    valorRecebido.value = 0;
-    troco.value || 0;
+
+    modalFaturar.value = false;
 
     await carregarProdutos();
     focarBusca();
@@ -716,6 +799,14 @@ async function finalizarVenda() {
   } finally {
     finalizando.value = false;
   }
+}
+
+function limparPagamentos() {
+  pagamentos.value = [
+    { forma: 'DINHEIRO', label: 'Dinheiro', valor: null },
+    { forma: 'CARTAO', label: 'Cartão', valor: null },
+    { forma: 'PIX', label: 'PIX', valor: null },
+  ];
 }
 
 watch([descontoTipo, descontoValor], ([tipo, valor]) => {
@@ -766,5 +857,16 @@ onMounted(async () => {
 .scroll-carrinho {
   max-height: 170px;
   overflow-y: auto;
+}
+
+:deep(.sem-setas input::-webkit-outer-spin-button),
+:deep(.sem-setas input::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+:deep(.sem-setas input[type='number']) {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 </style>

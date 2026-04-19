@@ -1,7 +1,7 @@
 <template>
   <q-page class="bg-grey-2 q-pa-md">
     <div class="row q-col-gutter-md items-start">
-      <div class="col-12 col-md-7">
+      <div class="col-12 col-md-8">
         <q-card flat bordered class="q-mb-md border">
           <q-card-section>
             <div class="text-h5">Ponto de Venda</div>
@@ -87,7 +87,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-md-5">
+      <div class="col-12 col-md-4">
         <q-card flat bordered class="sticky-card border">
           <q-card-section>
             <div class="text-h6 q-mb-md">Carrinho</div>
@@ -597,8 +597,16 @@ function escapeHtml(valor: string | number | null | undefined): string {
 function obterResumoFormaPagamento(
   pagamentosPayload: Array<{ forma: FormaPagamento; valor: number }>,
 ): FormaPagamentoResumo {
-  if (pagamentosPayload.length === 1) {
-    //return //pagamentosPayload[0].forma;
+  const formasValidas = Array.from(
+    new Set(
+      pagamentosPayload.filter((item) => Number(item.valor || 0) > 0).map((item) => item.forma),
+    ),
+  );
+
+  const [formaUnica] = formasValidas;
+
+  if (formasValidas.length === 1 && formaUnica) {
+    return formaUnica;
   }
 
   return 'COMBINADO';

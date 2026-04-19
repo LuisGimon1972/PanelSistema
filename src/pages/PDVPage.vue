@@ -461,9 +461,12 @@ watch(modalFaturar, async (abriu) => {
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-const totalPago = computed(() => {
-  const total = pagamentos.value.reduce((total, item) => {
-    return total + (Number(item.valor) || 0);
+const isFormaSemTroco = (forma?: string) =>
+  ['PIX', 'CARTAO', 'CARTÃO'].includes((forma || '').toUpperCase());
+
+const totalInformado = computed(() => {
+  const total = pagamentos.value.reduce((acc, item) => {
+    return acc + (Number(item.valor) || 0);
   }, 0);
 
   return round2(total);
@@ -472,18 +475,21 @@ const totalPago = computed(() => {
 const totalEmDinheiro = computed(() => {
   const total = pagamentos.value
     .filter((item) => item.forma === 'DINHEIRO')
-    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
+    .reduce((acc, item) => acc + (Number(item.valor) || 0), 0);
 
   return round2(total);
 });
 
-const faltaPagar = computed(() => round2(Math.max(0, totalVenda.value - totalPago.value)));
+const totalPago = computed(() => {
+  return round2(Math.min(totalInformado.value, totalVenda.value));
+});
+
+const faltaPagar = computed(() => {
+  return round2(Math.max(0, totalVenda.value - totalInformado.value));
+});
 
 const troco = computed(() => {
-  const excesso = round2(totalPago.value - totalVenda.value);
-  if (excesso <= 0) return 0;
-
-  return round2(Math.min(excesso, totalEmDinheiro.value));
+  return round2(Math.max(0, totalInformado.value - totalVenda.value));
 });
 
 function tocarBeep() {
@@ -724,7 +730,7 @@ async function finalizarVenda() {
   const pagamentosPayload = pagamentos.value
     .map((item) => ({
       forma: item.forma,
-      valor: Number(item.valor || 0),
+      valor: round2(Number(item.valor || 0)),
     }))
     .filter((item) => item.valor > 0);
 
@@ -736,7 +742,22 @@ async function finalizarVenda() {
     return;
   }
 
-  if (totalPago.value < totalVenda.value) {
+  let restante = round2(totalVenda.value);
+
+  for (const item of pagamentosPayload) {
+    if (isFormaSemTroco(item.forma) && item.valor > restante) {
+      Notify.create({
+        type: 'warning',
+        message: `O valor do ${item.forma} não pode ser maior que o valor faltante de R$ ${restante.toFixed(2)}.`,
+      });
+      return;
+    }
+
+    const valorAplicado = round2(Math.min(item.valor, restante));
+    restante = round2(Math.max(0, restante - valorAplicado));
+  }
+
+  if (faltaPagar.value > 0) {
     Notify.create({
       type: 'warning',
       message: 'O total pago é menor que o total da venda',

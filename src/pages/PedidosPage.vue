@@ -378,6 +378,12 @@
             :loading="salvando"
             @click="salvarPedidoComPagamento"
           />
+          <q-checkbox
+            v-model="imprimirComprovanteAutomaticamente"
+            dense
+            label="Imprimir comprovante após faturar"
+            class="q-mb-sm"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -509,6 +515,7 @@ const acrescimoTipo = ref<TipoAjuste>('valor');
 const acrescimoValor = ref<number>(0);
 
 const modalFaturar = ref(false);
+const imprimirComprovanteAutomaticamente = ref(true);
 
 const pagamentoRefs = ref<Array<InstanceType<typeof QInput> | null>>([]);
 
@@ -574,8 +581,16 @@ function obterPagamentosValidos() {
 function obterFormaPagamentoResumo(
   pagamentosValidos: Array<{ forma: FormaPagamento; valor: number }>,
 ): FormaPagamentoResumo {
-  if (pagamentosValidos.length === 1) {
-    return pagamentosValidos[0]!.forma;
+  const formasValidas = Array.from(
+    new Set(
+      pagamentosValidos.filter((item) => Number(item.valor || 0) > 0).map((item) => item.forma),
+    ),
+  );
+
+  const [formaUnica] = formasValidas;
+
+  if (formasValidas.length === 1 && formaUnica) {
+    return formaUnica;
   }
 
   return 'COMBINADO';
@@ -664,6 +679,238 @@ function formatarMoeda(valor: number): string {
     style: 'currency',
     currency: 'BRL',
   }).format(Number(valor || 0));
+}
+
+type DadosComprovantePedido = {
+  pedidoId?: number | string | null;
+  dataPedido: Date | string;
+  clienteNome: string;
+  itens: ItemPedido[];
+  pagamentos: Array<{ forma: FormaPagamento; valor: number }>;
+  subtotal: number;
+  desconto: number;
+  acrescimo: number;
+  total: number;
+  totalPago: number;
+  troco: number;
+};
+
+function escapeHtml(value: string | number | null | undefined): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatarDataHora(data: Date | string): string {
+  const dataFormatada = data instanceof Date ? data : new Date(data);
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(dataFormatada);
+}
+
+function gerarHtmlComprovantePedido(dados: DadosComprovantePedido): string {
+  const itensHtml = dados.itens
+    .map(
+      (item) => `
+        <div class="linha-item">
+          <div>${escapeHtml(item.nome)}</div>
+          <div>${escapeHtml(String(item.quantidade))} x ${escapeHtml(formatarMoeda(item.preco))}</div>
+          <div class="valor">${escapeHtml(formatarMoeda(item.subtotal))}</div>
+        </div>
+      `,
+    )
+    .join('');
+
+  const pagamentosHtml = dados.pagamentos
+    .map(
+      (pagamento) => `
+        <div class="linha">
+          <span>${escapeHtml(getLabelFormaPagamento(pagamento.forma))}</span>
+          <strong>${escapeHtml(formatarMoeda(pagamento.valor))}</strong>
+        </div>
+      `,
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Comprovante do Pedido</title>
+    <style>
+      @page {
+        size: 80mm auto;
+        margin: 4mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        color: #000;
+        font-family: monospace;
+      }
+
+      .comprovante {
+        width: 72mm;
+        margin: 0 auto;
+        padding: 4mm 0;
+        font-size: 12px;
+      }
+
+      .centralizado {
+        text-align: center;
+      }
+
+      .titulo {
+        margin-bottom: 2mm;
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .separador {
+        margin: 3mm 0;
+        border-top: 1px dashed #000;
+      }
+
+      .linha {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 1mm;
+      }
+
+      .linha-item {
+        margin-bottom: 2.5mm;
+      }
+
+      .valor {
+        text-align: right;
+        font-weight: bold;
+      }
+
+      .total {
+        font-size: 14px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="comprovante">
+      <div class="centralizado">
+        <div class="titulo">COMPROVANTE DE PEDIDO</div>
+        <div>${dados.pedidoId ? `Pedido #${escapeHtml(dados.pedidoId)}` : 'Pedido faturado'}</div>
+        <div>${escapeHtml(formatarDataHora(dados.dataPedido))}</div>
+      </div>
+
+      <div class="separador"></div>
+
+      <div><strong>Cliente:</strong> ${escapeHtml(dados.clienteNome || 'Não informado')}</div>
+
+      <div class="separador"></div>
+
+      <div><strong>Itens</strong></div>
+      ${itensHtml || '<div>Nenhum item</div>'}
+
+      <div class="separador"></div>
+
+      <div class="linha">
+        <span>Subtotal</span>
+        <strong>${escapeHtml(formatarMoeda(dados.subtotal))}</strong>
+      </div>
+
+      <div class="linha">
+        <span>Desconto</span>
+        <strong>${escapeHtml(formatarMoeda(dados.desconto))}</strong>
+      </div>
+
+      <div class="linha">
+        <span>Acréscimo</span>
+        <strong>${escapeHtml(formatarMoeda(dados.acrescimo))}</strong>
+      </div>
+
+      <div class="linha total">
+        <span>Total</span>
+        <strong>${escapeHtml(formatarMoeda(dados.total))}</strong>
+      </div>
+
+      <div class="separador"></div>
+
+      <div><strong>Pagamentos</strong></div>
+      ${pagamentosHtml}
+
+      <div class="linha">
+        <span>Total pago</span>
+        <strong>${escapeHtml(formatarMoeda(dados.totalPago))}</strong>
+      </div>
+
+      <div class="linha">
+        <span>Troco</span>
+        <strong>${escapeHtml(formatarMoeda(dados.troco))}</strong>
+      </div>
+
+      <div class="separador"></div>
+
+      <div class="centralizado">Obrigado pela preferência</div>
+    </div>
+  </body>
+</html>`;
+}
+
+function imprimirComprovantePedido(dados: DadosComprovantePedido): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const iframe = document.createElement('iframe');
+
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+
+      let finalizado = false;
+
+      const finalizar = () => {
+        if (finalizado) return;
+
+        finalizado = true;
+        iframe.remove();
+        resolve();
+      };
+
+      const timeoutId = window.setTimeout(finalizar, 3000);
+
+      iframe.onload = () => {
+        window.clearTimeout(timeoutId);
+
+        window.setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          window.setTimeout(finalizar, 1000);
+        }, 250);
+      };
+
+      iframe.srcdoc = gerarHtmlComprovantePedido(dados);
+      document.body.appendChild(iframe);
+    } catch {
+      Notify.create({
+        type: 'warning',
+        message: 'Pedido faturado, mas não foi possível abrir a impressão do comprovante',
+      });
+
+      resolve();
+    }
+  });
 }
 
 async function carregarClientes() {
@@ -883,7 +1130,10 @@ async function salvarPedidoComPagamento() {
     return;
   }
 
-  const pagamentosPayload = obterPagamentosValidos();
+  const pagamentosPayload = obterPagamentosValidos().map((item) => ({
+    forma: item.forma,
+    valor: round2(Number(item.valor || 0)),
+  }));
 
   if (pagamentosPayload.length === 0) {
     Notify.create({
@@ -916,6 +1166,17 @@ async function salvarPedidoComPagamento() {
     return;
   }
 
+  const itensComprovante = itens.value.map((item) => ({ ...item }));
+  const pagamentosComprovante = pagamentosPayload.map((item) => ({ ...item }));
+  const clienteNomeComprovante = nomeClienteSelecionado.value || 'Não informado';
+  const subtotalComprovante = Number(subtotalPedido.value || 0);
+  const descontoComprovante = Number(descontoCalculado.value || 0);
+  const acrescimoComprovante = Number(acrescimoCalculado.value || 0);
+  const totalComprovante = Number(totalPedido.value || 0);
+  const totalPagoComprovante = Number(totalPago.value || 0);
+  const trocoComprovante = Number(troco.value || 0);
+  const dataPedidoComprovante = new Date();
+
   salvando.value = true;
 
   try {
@@ -926,8 +1187,8 @@ async function salvarPedidoComPagamento() {
       status: 'FINALIZADO',
       origem: origemPedido.value,
 
-      desconto: Number(descontoCalculado.value || 0),
-      acrescimo: Number(acrescimoCalculado.value || 0),
+      desconto: descontoComprovante,
+      acrescimo: acrescimoComprovante,
 
       desconto_tipo: descontoTipo.value,
       desconto_valor: Number(descontoValor.value || 0),
@@ -936,8 +1197,8 @@ async function salvarPedidoComPagamento() {
       acrescimo_valor: Number(acrescimoValor.value || 0),
 
       forma_pagamento: formaPagamentoResumo,
-      valor_recebido: Number(totalPago.value || 0),
-      troco: Number(troco.value || 0),
+      valor_recebido: totalPagoComprovante,
+      troco: trocoComprovante,
       pagamentos: pagamentosPayload,
 
       itens: itens.value.map((item) => ({
@@ -946,12 +1207,38 @@ async function salvarPedidoComPagamento() {
       })),
     };
 
+    let pedidoIdComprovante: number | string | null = pedidoId.value;
+
     if (pedidoId.value) {
-      await api.put(`/pedidos/${pedidoId.value}`, payload);
+      const { data } = await api.put(`/pedidos/${pedidoId.value}`, payload);
+      pedidoIdComprovante =
+        pedidoId.value || data?.id || data?.pedido?.id || data?.pedido_id || null;
+
       Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
     } else {
-      await api.post('/pedidos', payload);
+      const { data } = await api.post('/pedidos', payload);
+      pedidoIdComprovante = data?.id || data?.pedido?.id || data?.pedido_id || null;
+
       Notify.create({ type: 'positive', message: 'Pedido faturado com sucesso' });
+    }
+
+    modalFaturar.value = false;
+    await nextTick();
+
+    if (imprimirComprovanteAutomaticamente.value) {
+      await imprimirComprovantePedido({
+        pedidoId: pedidoIdComprovante,
+        dataPedido: dataPedidoComprovante,
+        clienteNome: clienteNomeComprovante,
+        itens: itensComprovante,
+        pagamentos: pagamentosComprovante,
+        subtotal: subtotalComprovante,
+        desconto: descontoComprovante,
+        acrescimo: acrescimoComprovante,
+        total: totalComprovante,
+        totalPago: totalPagoComprovante,
+        troco: trocoComprovante,
+      });
     }
 
     resetFormulario();

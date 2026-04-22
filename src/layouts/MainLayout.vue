@@ -39,6 +39,13 @@
           <q-item-section>Dashboard</q-item-section>
         </q-item>
 
+        <q-item clickable to="/financeiro" active-class="menu-active">
+          <q-item-section avatar>
+            <q-icon name="payments" />
+          </q-item-section>
+          <q-item-section>Financeiro</q-item-section>
+        </q-item>
+
         <q-item clickable to="/clientes" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="people" />
@@ -72,12 +79,6 @@
             <q-icon name="point_of_sale" />
           </q-item-section>
           <q-item-section>PDV</q-item-section>
-        </q-item>
-        <q-item clickable to="/financeiro" active-class="menu-active">
-          <q-item-section avatar>
-            <q-icon name="payments" />
-          </q-item-section>
-          <q-item-section>Financeiro</q-item-section>
         </q-item>
       </q-list>
     </q-drawer>

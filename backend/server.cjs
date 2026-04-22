@@ -11,6 +11,7 @@ const clientesRoutes = require('./src/routes/clientes.routes.cjs');
 const produtosRoutes = require('./src/routes/produtos.routes.cjs');
 const authRoutes = require('./src/routes/auth.routes.cjs');
 const pedidosRoutes = require('./src/routes/pedidos.routes.cjs');
+const financeiroRoutes = require('./src/routes/financeiro.routes.cjs');
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/uploads', express.static('uploads'));
 app.use('/pedidos', pedidosRoutes);
+app.use('/financeiro', financeiroRoutes);
 
 /*const authMiddleware = require('./src/middlewares/auth.middleware.cjs');
 

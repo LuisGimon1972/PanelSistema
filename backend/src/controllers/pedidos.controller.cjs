@@ -256,6 +256,30 @@ async function criarPedido(req, res) {
       ],
     );
 
+    if (statusFinal === 'FINALIZADO') {
+      const descricao = origemFinal === 'PDV' ? 'Venda finalizada no PDV' : 'Pedido finalizado';
+
+      if (pagamentosArray.length > 0) {
+        for (const pagamento of pagamentosArray) {
+          await registrarEntradaFinanceira(client, {
+            valor: pagamento.valor,
+            origem: origemFinal,
+            pedido_id: pedidoId,
+            forma_pagamento: pagamento.forma,
+            descricao,
+          });
+        }
+      } else {
+        await registrarEntradaFinanceira(client, {
+          valor: totalFinal,
+          origem: origemFinal,
+          pedido_id: pedidoId,
+          forma_pagamento: formaPagamentoFinal,
+          descricao,
+        });
+      }
+    }
+
     await client.query('COMMIT');
 
     return res.status(201).json({
@@ -790,6 +814,39 @@ async function atualizarPedido(req, res) {
       ],
     );
 
+    await client.query(
+      `
+      DELETE FROM financeiro_entradas
+      WHERE pedido_id = $1
+        AND descricao IN ('Pedido finalizado', 'Venda finalizada no PDV')
+      `,
+      [id],
+    );
+
+    if (statusFinal === 'FINALIZADO') {
+      const descricao = origemFinal === 'PDV' ? 'Venda finalizada no PDV' : 'Pedido finalizado';
+
+      if (pagamentosArray.length > 0) {
+        for (const pagamento of pagamentosArray) {
+          await registrarEntradaFinanceira(client, {
+            valor: pagamento.valor,
+            origem: origemFinal,
+            pedido_id: id,
+            forma_pagamento: pagamento.forma,
+            descricao,
+          });
+        }
+      } else {
+        await registrarEntradaFinanceira(client, {
+          valor: totalFinal,
+          origem: origemFinal,
+          pedido_id: id,
+          forma_pagamento: formaPagamentoFinal,
+          descricao,
+        });
+      }
+    }
+
     await client.query('COMMIT');
 
     return res.json({
@@ -826,6 +883,25 @@ async function atualizarPedido(req, res) {
   }
 }
 
+async function registrarEntradaFinanceira(
+  client,
+  { valor, origem, pedido_id, forma_pagamento, descricao },
+) {
+  await client.query(
+    `
+    INSERT INTO financeiro_entradas (
+      valor,
+      origem,
+      pedido_id,
+      forma_pagamento,
+      descricao
+    )
+    VALUES ($1, $2, $3, $4, $5)
+    `,
+    [Number(valor), origem, pedido_id || null, forma_pagamento || null, descricao || null],
+  );
+}
+
 module.exports = {
   criarPedido,
   listarPedidos,
@@ -833,4 +909,5 @@ module.exports = {
   buscarPedido,
   atualizarStatusPedido,
   cancelarPedido,
+  registrarEntradaFinanceira,
 };

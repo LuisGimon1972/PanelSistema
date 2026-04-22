@@ -84,6 +84,17 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
 ALTER TABLE pedidos
 ADD COLUMN origem origem_pedido DEFAULT 'PEDIDO';*/
 
+CREATE TABLE IF NOT EXISTS financeiro_entradas (
+  id SERIAL PRIMARY KEY,
+  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  valor NUMERIC(12,2) NOT NULL,
+  origem VARCHAR(20) NOT NULL, -- PEDIDO ou PDV
+  pedido_id INTEGER,
+  forma_pagamento VARCHAR(20),
+  descricao VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_clientes_nome
 ON clientes (nome);
 

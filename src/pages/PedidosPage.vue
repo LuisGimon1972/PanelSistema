@@ -367,6 +367,12 @@
               {{ formatarMoeda(troco) }}
             </strong>
           </div>
+          <q-checkbox
+            v-model="imprimirComprovanteAutomaticamente"
+            dense
+            label="Imprimir comprovante após faturar"
+            class="q-mb-sm"
+          />
         </q-card-section>
 
         <q-card-actions align="right">
@@ -377,13 +383,7 @@
             label="Confirmar"
             :loading="salvando"
             @click="salvarPedidoComPagamento"
-          />
-          <q-checkbox
-            v-model="imprimirComprovanteAutomaticamente"
-            dense
-            label="Imprimir comprovante após faturar"
-            class="q-mb-sm"
-          />
+          />          
         </q-card-actions>
       </q-card>
     </q-dialog>

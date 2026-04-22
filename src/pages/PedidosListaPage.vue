@@ -45,21 +45,22 @@
               color="warning"
               icon="filter_alt_off"
               label="Limpar Filtros"
-              style="border-radius: 12px"
+              class="border"
               :disable="!filtroOrigem && !filtroStatus"
               @click="limparFiltros"
             />
           </div>
         </div>
         <q-table
+          class="border"
           flat
           bordered
+          dense
           :rows="pedidosFiltrados"
           :columns="columns"
           row-key="id"
           :loading="loading"
           no-data-label="Nenhum pedido encontrado"
-          class="border"
         >
           <template #body-cell-data="props">
             <q-td :props="props">
@@ -163,6 +164,7 @@
           </div>
 
           <q-table
+            class="border"
             flat
             bordered
             dense

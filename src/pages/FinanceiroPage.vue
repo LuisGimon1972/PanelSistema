@@ -138,6 +138,7 @@
           class="border"
           flat
           bordered
+          dense
           :rows="entradas"
           :columns="columns"
           row-key="id"

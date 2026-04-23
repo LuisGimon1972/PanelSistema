@@ -1,5 +1,5 @@
 <template>
-  <q-page padding>
+  <q-page padding class="border">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Produtos</div>
 
@@ -57,42 +57,62 @@
     </q-table>
 
     <q-dialog v-model="dialog">
-      <q-card style="min-width: 500px; max-width: 500px; width: 100%">
+      <q-card style="min-width: 500px; max-width: 500px; width: 100%" class="border">
         <q-card-section>
           <div class="text-h6">
             {{ editando ? 'Editar Produto' : 'Novo Produto' }}
           </div>
         </q-card-section>
 
-        <q-card-section class="q-gutter-md">
+        <q-card-section class="q-gutter-md" style="margin-top: -40px">
           <q-card flat bordered class="q-pa-md">
             <div class="text-subtitle1 q-mb-md">Dados do produto</div>
             <q-input
               v-model="form.codigo_barras"
               label="Código de Barras"
               mask="###########"
+              dense
               outlined
             />
-            <q-input v-model="form.nome" label="Nome" outlined />
-            <q-input v-model="form.categoria" label="Categoria" outlined />
-            <q-input v-model.number="form.preco" label="Preço" type="number" outlined :min="0.0" />
+            <q-input v-model="form.nome" label="Nome" dense outlined />
+            <q-input v-model="form.categoria" label="Categoria" dense outlined />
             <q-input
-              v-model.number="form.estoque"
-              label="Estoque"
+              v-model.number="form.preco"
+              label="Preço"
+              dense
               type="number"
               outlined
+              :min="0.0"
+            />
+            <q-input
+              v-model.number="form.estoque"
+              label="Estoque atual"
+              type="number"
+              dense
+              outlined
+              :disable="editando"
+            />
+
+            <q-input
+              v-if="editando"
+              v-model.number="novaQuantidade"
+              label="Nova quantidade"
+              type="number"
+              outlined
+              dense
               :min="0"
             />
           </q-card>
 
-          <q-card flat bordered class="q-pa-md" style="border-radius: 10px">
-            <div class="text-subtitle1 q-mb-md">Foto do produto</div>
+          <q-card flat bordered class="q-pa-md border" style="margin-top: -10px">
+            <div class="text-subtitle1 q-mb-md" dense>Foto do produto</div>
 
             <q-file
               v-model="fotoArquivo"
               class="text-normal q-mb-sm"
               label="Selecionar imagem (formatos: .JPG, .JPEG, .PNG ou .WEBP)"
               outlined
+              dense
               clearable
               accept=".jpg,.jpeg,.png,.webp"
             >
@@ -105,7 +125,7 @@
               <q-img
                 v-if="previewFoto"
                 :src="previewFoto"
-                style="width: 180px; height: 180px; border-radius: 10px"
+                style="width: 70px; height: 70px; border-radius: 10px"
                 fit="cover"
               >
                 <template #error>
@@ -118,7 +138,7 @@
               <q-img
                 v-else-if="form.foto"
                 :src="form.foto"
-                style="width: 180px; height: 180px; border-radius: 10px"
+                style="width: 70px; height: 70px; border-radius: 10px"
                 fit="cover"
               >
                 <template #error>
@@ -131,7 +151,7 @@
               <div
                 v-else
                 class="bg-grey-2 text-grey-7 flex flex-center"
-                style="width: 180px; height: 100px; border-radius: 10px"
+                style="width: 100px; height: 100px; border-radius: 10px"
               >
                 Sem imagem
               </div>
@@ -149,7 +169,7 @@
           </q-card>
         </q-card-section>
 
-        <q-card-actions align="right">
+        <q-card-actions align="right" style="margin-top: -20px">
           <q-btn
             flat
             label="Cancelar"
@@ -174,6 +194,9 @@ import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import type { QTableProps } from 'quasar';
 import { Notify } from 'quasar';
+
+const novaQuantidade = ref<number>(0);
+const estoqueOriginal = ref<number>(0);
 
 interface Produto {
   id?: number;
@@ -276,6 +299,8 @@ function resetFormulario(): void {
     codigo_barras: '',
   };
 
+  estoqueOriginal.value = 0;
+  novaQuantidade.value = 0;
   fotoArquivo.value = null;
   fotoRemovida.value = false;
 
@@ -310,10 +335,20 @@ function editarProduto(produto: Produto): void {
     codigo_barras: produto.codigo_barras ?? '',
   };
 
+  estoqueOriginal.value = Number(produto.estoque || 0);
+  novaQuantidade.value = 0;
+
   produtoId.value = produto.id ?? null;
   editando.value = true;
   dialog.value = true;
 }
+
+watch(novaQuantidade, (valor) => {
+  if (!editando.value) return;
+
+  const quantidade = Math.max(0, Number(valor || 0));
+  form.value.estoque = estoqueOriginal.value + quantidade;
+});
 
 function removerFoto(): void {
   if (previewFoto.value) {
@@ -353,6 +388,7 @@ async function salvarProduto(): Promise<void> {
 
     const payload = {
       ...form.value,
+      estoque: form.value.estoque,
       codigo_barras: form.value.codigo_barras?.trim() || null,
       foto: fotoUrl,
     };

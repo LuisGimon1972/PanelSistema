@@ -4,7 +4,7 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title>Painel de Gestão Comercial</q-toolbar-title>
+        <q-toolbar-title>VendaFlow Gestão Comercial</q-toolbar-title>
 
         <div class="row items-center q-gutter-sm">
           <q-avatar color="white" text-color="primary" icon="person" size="32px" />

@@ -32,4 +32,5 @@ router.post('/', controller.criarProduto);
 router.put('/:id', controller.atualizarProduto);
 router.delete('/:id', controller.excluirProduto);
 router.get('/codigo/:codigo', controller.buscarPorCodigoBarras);
+router.patch('/:id/status', controller.atualizarStatusProduto);
 module.exports = router;

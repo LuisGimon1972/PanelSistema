@@ -39,7 +39,15 @@ async function buscarProduto(req, res) {
   }
 
   try {
-    const { rows } = await pool.query('SELECT * FROM produtos WHERE id = $1', [id]);
+    const { rows } = await pool.query(
+      `
+      SELECT *
+      FROM produtos
+      WHERE id = $1
+        AND status = 'ATIVO'
+      `,
+      [id],
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({ erro: 'Produto não encontrado' });
@@ -162,19 +170,73 @@ async function atualizarProduto(req, res) {
 async function excluirProduto(req, res) {
   const { id } = req.params;
 
-  try {
-    const result = await pool.query('DELETE FROM produtos WHERE id = $1 RETURNING id', [id]);
+  const client = await pool.connect();
 
-    if (result.rows.length === 0) {
+  try {
+    await client.query('BEGIN');
+
+    const produtoResult = await client.query(
+      `
+      SELECT *
+      FROM produtos
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [Number(id)],
+    );
+
+    if (produtoResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ erro: 'Produto não encontrado' });
     }
 
-    res.json({
+    const produtoAtual = produtoResult.rows[0];
+
+    if (produtoAtual.status === 'INATIVO') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ erro: 'Produto já está desativado' });
+    }
+
+    const result = await client.query(
+      `
+      UPDATE produtos
+      SET status = 'INATIVO'
+      WHERE id = $1
+      RETURNING *
+      `,
+      [Number(id)],
+    );
+
+    if (typeof registrarHistoricoProduto === 'function') {
+      await registrarHistoricoProduto(client, {
+        produtoId: Number(id),
+        acao: 'DESATIVACAO',
+        motivo: 'Produto desativado pela exclusão lógica',
+        usuarioId: req.user?.id || null,
+        camposAlterados: {
+          status: {
+            antes: produtoAtual.status,
+            depois: 'INATIVO',
+          },
+        },
+      });
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
       sucesso: true,
-      id: Number(id),
+      mensagem: 'Produto desativado com sucesso',
+      produto: result.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    await client.query('ROLLBACK');
+
+    return res.status(500).json({
+      erro: err.message || 'Erro ao desativar produto',
+    });
+  } finally {
+    client.release();
   }
 }
 
@@ -182,7 +244,15 @@ async function buscarPorCodigoBarras(req, res) {
   const { codigo } = req.params;
 
   try {
-    const { rows } = await pool.query('SELECT * FROM produtos WHERE codigo_barras = $1', [codigo]);
+    const { rows } = await pool.query(
+      `
+      SELECT *
+      FROM produtos
+      WHERE codigo_barras = $1
+        AND status = 'ATIVO'
+      `,
+      [codigo],
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -190,9 +260,53 @@ async function buscarPorCodigoBarras(req, res) {
       });
     }
 
-    res.json(rows[0]);
+    return res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    return res.status(500).json({ erro: err.message });
+  }
+}
+
+async function atualizarStatusProduto(req, res) {
+  const id = Number(req.params.id);
+  const status = req.body?.status?.trim?.().toUpperCase();
+
+  const statusValidos = ['ATIVO', 'INATIVO'];
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
+
+  if (!statusValidos.includes(status)) {
+    return res.status(400).json({ erro: 'Status inválido' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE produtos
+      SET status = $1
+      WHERE id = $2
+      RETURNING *
+      `,
+      [status, id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ erro: 'Produto não encontrado' });
+    }
+
+    return res.status(200).json({
+      sucesso: true,
+      mensagem:
+        status === 'ATIVO' ? 'Produto ativado com sucesso' : 'Produto desativado com sucesso',
+      produto: result.rows[0],
+    });
+  } catch (err) {
+    console.error('Erro ao atualizar status do produto:', err);
+
+    return res.status(500).json({
+      erro: 'Erro ao atualizar status do produto',
+    });
   }
 }
 
@@ -203,4 +317,5 @@ module.exports = {
   atualizarProduto,
   excluirProduto,
   buscarPorCodigoBarras,
+  atualizarStatusProduto,
 };

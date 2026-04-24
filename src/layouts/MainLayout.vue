@@ -4,7 +4,14 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title>VendaFlow Gestão Comercial</q-toolbar-title>
+        <q-toolbar-title class="row items-center no-wrap">
+          <img
+            :src="logo"
+            alt="Logo"
+            style="width: 50px; height: 36px; object-fit: contain; margin-right: 10px"
+          />
+          <span>VendaFlow Gestão Comercial</span>
+        </q-toolbar-title>
 
         <div class="row items-center q-gutter-sm">
           <q-avatar color="white" text-color="primary" icon="person" size="32px" />
@@ -93,6 +100,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Notify } from 'quasar';
+import logo from 'src/assets/logo.jpg';
 
 interface Usuario {
   id?: number;

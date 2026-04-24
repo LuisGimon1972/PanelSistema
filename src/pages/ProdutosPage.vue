@@ -36,6 +36,19 @@
           @update:model-value="carregarProdutos"
         />
       </div>
+
+      <div class="col-12 col-md-2">
+        <q-select
+          class="border"
+          v-model="filtroStatus"
+          :options="statusOptions"
+          label="Status"
+          outlined
+          clearable
+          dense
+          @update:model-value="carregarProdutos"
+        />
+      </div>
     </div>
 
     <q-table :rows="produtos" :columns="columns" row-key="id" flat bordered class="border">
@@ -50,8 +63,32 @@
 
       <template v-slot:body-cell-acoes="props">
         <q-td>
-          <q-btn icon="edit" size="sm" flat color="primary" @click="editarProduto(props.row)" />
-          <q-btn icon="delete" size="sm" flat color="red" @click="excluirProduto(props.row.id)" />
+          <q-btn
+            v-if="props.row.status === 'ATIVO'"
+            icon="edit"
+            size="sm"
+            flat
+            color="primary"
+            @click="editarProduto(props.row)"
+          />
+
+          <q-btn
+            v-if="props.row.status === 'ATIVO'"
+            icon="delete"
+            size="sm"
+            flat
+            color="red"
+            @click="excluirProduto(props.row.id)"
+          />
+
+          <q-btn
+            v-else
+            icon="check_circle"
+            size="sm"
+            flat
+            color="positive"
+            @click="ativarProduto(props.row.id)"
+          />
         </q-td>
       </template>
     </q-table>
@@ -193,10 +230,14 @@
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import type { QTableProps } from 'quasar';
-import { Notify } from 'quasar';
+import { Notify, Dialog } from 'quasar';
 
 const novaQuantidade = ref<number>(0);
 const estoqueOriginal = ref<number>(0);
+
+const filtroStatus = ref('ATIVO');
+
+const statusOptions = ['ATIVO', 'INATIVO'];
 
 interface Produto {
   id?: number;
@@ -283,6 +324,7 @@ async function carregarProdutos(): Promise<void> {
     params: {
       busca: filtroBusca.value,
       categoria: filtroCategoria.value,
+      status: filtroStatus.value,
     },
   });
 
@@ -418,11 +460,77 @@ async function salvarProduto(): Promise<void> {
 }
 
 async function excluirProduto(id?: number): Promise<void> {
-  if (id == null) return;
-  if (!confirm('Deseja excluir este produto?')) return;
+  if (!id || id <= 0) return;
 
-  await axios.delete(`${API_URL}/produtos/${id}`);
-  await carregarProdutos();
+  Dialog.create({
+    title: 'Confirmar exclusão',
+    message: 'Deseja excluir este produto?',
+    ok: {
+      label: 'Excluir',
+      color: 'negative',
+      unelevated: true,
+    },
+    cancel: {
+      label: 'Cancelar',
+      color: 'grey-7',
+      flat: true,
+    },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await axios.delete(`${API_URL}/produtos/${id}`);
+
+      Notify.create({
+        type: 'positive',
+        message: 'Produto excluído com sucesso',
+      });
+
+      await carregarProdutos();
+    } catch (error: any) {
+      Notify.create({
+        type: 'negative',
+        message: error?.response?.data?.erro || 'Erro ao excluir produto',
+      });
+    }
+  });
+}
+
+async function ativarProduto(id?: number): Promise<void> {
+  if (!id || id <= 0) return;
+
+  Dialog.create({
+    title: 'Confirmar ativação',
+    message: 'Deseja ativar este produto?',
+    ok: {
+      label: 'Ativar',
+      color: 'positive',
+      unelevated: true,
+    },
+    cancel: {
+      label: 'Cancelar',
+      color: 'grey-7',
+      flat: true,
+    },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await axios.patch(`${API_URL}/produtos/${id}/status`, {
+        status: 'ATIVO',
+      });
+
+      Notify.create({
+        type: 'positive',
+        message: 'Produto ativado com sucesso',
+      });
+
+      await carregarProdutos();
+    } catch (error: any) {
+      Notify.create({
+        type: 'negative',
+        message: error?.response?.data?.erro || 'Erro ao ativar produto',
+      });
+    }
+  });
 }
 
 onMounted(() => {

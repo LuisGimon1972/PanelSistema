@@ -8,7 +8,7 @@
           <img
             :src="logo"
             alt="Logo"
-            style="width: 50px; height: 36px; object-fit: contain; margin-right: 10px"
+            style="width: 60px; height: 36px; object-fit: contain; margin-right: 10px"
           />
           <span>VendaFlow Gestão Comercial</span>
         </q-toolbar-title>

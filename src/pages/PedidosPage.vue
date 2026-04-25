@@ -11,7 +11,7 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="q-mb-md border">
+        <q-card flat bordered class="q-mb-md border separa">
           <q-card-section>
             <div class="row q-col-gutter-md items-center">
               <div class="col-12 col-md-6">
@@ -44,7 +44,7 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="q-mb-md border">
+        <q-card flat bordered class="q-mb-md border separa">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Cliente</div>
 
@@ -65,7 +65,7 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="q-mb-md border">
+        <q-card flat bordered class="q-mb-md border separa">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Adicionar Produto</div>
 
@@ -118,11 +118,12 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="border">
+        <q-card flat bordered class="border separa">
           <q-card-section>
             <div class="text-subtitle1 text-weight-medium q-mb-md">Itens do Pedido</div>
 
             <q-table
+              class="grade-azul border"
               flat
               bordered
               :rows="itens"
@@ -1570,6 +1571,10 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+.separa {
+  margin-top: -10px;
+}
+
 :deep(.sem-setas input::-webkit-outer-spin-button),
 :deep(.sem-setas input::-webkit-inner-spin-button) {
   -webkit-appearance: none;
@@ -1579,5 +1584,24 @@ onMounted(async () => {
 :deep(.sem-setas input[type='number']) {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+.grade-azul :deep(.q-table thead tr) {
+  background-color: #0057d9;
+}
+
+.grade-azul :deep(.q-table thead th) {
+  background-color: #0057d9;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  height: 42px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 2px solid #dcdcdc;
+}
+
+.grade-azul :deep(.q-table thead th:last-child) {
+  border-right: none;
 }
 </style>

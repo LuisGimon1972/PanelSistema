@@ -1,5 +1,5 @@
 <template>
-  <q-page padding>
+  <q-page padding class="border">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Clientes</div>
 
@@ -56,7 +56,7 @@
     </q-table>
 
     <q-dialog v-model="dialog">
-      <q-card style="min-width: 400px">
+      <q-card style="min-width: 400px" class="border">
         <q-card-section>
           <div class="text-h6">
             {{ editando ? 'Editar Cliente' : 'Novo Cliente' }}
@@ -65,11 +65,49 @@
 
         <q-card style="border-radius: 12px; overflow: hidden">
           <q-card-section>
-            <q-input mask="###.###.###-##" v-model="form.documento" label="Documento" />
-            <q-input v-model="form.nome" label="Nome" />
-            <q-input v-model="form.email" label="Email" />
-            <q-input v-model="form.telefone" label="Telefone" mask="(##)#####-####" />
-            <q-input v-model="form.cidade" label="Cidade" />
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-md-6">
+                <q-input dense mask="###.###.###-##" v-model="form.documento" label="Documento" />
+              </div>
+
+              <div class="col-12">
+                <q-input dense v-model="form.nome" label="Nome Completo" />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input dense v-model="form.email" label="Email" />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input dense v-model="form.telefone" label="Telefone" mask="(##)#####-####" />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input
+                  dense
+                  v-model="form.cep"
+                  label="CEP"
+                  mask="#####-###"
+                  :loading="buscandoCep"
+                />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input dense v-model="form.endereco" label="Endereço" />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input dense v-model="form.numero" label="Número" />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input dense v-model="form.bairro" label="Bairro" />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <q-input dense v-model="form.cidade" label="Cidade" />
+              </div>
+            </div>
           </q-card-section>
         </q-card>
 
@@ -88,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { Notify } from 'quasar';
 import type { QTableProps } from 'quasar';
@@ -101,6 +139,10 @@ interface Cliente {
   nome: string;
   email: string;
   telefone: string;
+  cep: string;
+  endereco: string;
+  bairro: string;
+  numero: string;
   cidade: string;
   status?: StatusCliente;
 }
@@ -122,6 +164,10 @@ const form = ref<Cliente>({
   nome: '',
   email: '',
   telefone: '',
+  cep: '',
+  endereco: '',
+  bairro: '',
+  numero: '',
   cidade: '',
 });
 
@@ -149,7 +195,18 @@ async function carregarClientes(): Promise<void> {
 }
 
 function editarCliente(cliente: Cliente): void {
-  form.value = { ...cliente };
+  form.value = {
+    documento: cliente.documento ?? '',
+    nome: cliente.nome ?? '',
+    email: cliente.email ?? '',
+    telefone: cliente.telefone ?? '',
+    cep: cliente.cep ?? '',
+    endereco: cliente.endereco ?? '',
+    bairro: cliente.bairro ?? '',
+    numero: cliente.numero ?? '',
+    cidade: cliente.cidade ?? '',
+  };
+
   clienteId.value = cliente.id ?? null;
   editando.value = true;
   dialog.value = true;
@@ -184,19 +241,28 @@ function abrirDialog(): void {
     nome: '',
     email: '',
     telefone: '',
+    cep: '',
+    endereco: '',
+    bairro: '',
+    numero: '',
     cidade: '',
   };
+
   clienteId.value = null;
   editando.value = false;
   dialog.value = true;
 }
 
-function normalizarDocumento(documento: string): string {
-  return documento.replace(/\D/g, '').trim();
+function normalizarDocumento(documento?: string | null): string {
+  return String(documento || '')
+    .replace(/\D/g, '')
+    .trim();
 }
 
 function documentoJaExiste(): boolean {
   const documentoForm = normalizarDocumento(form.value.documento);
+
+  if (!documentoForm) return false;
 
   return clientes.value.some((cliente) => {
     if (editando.value && cliente.id === clienteId.value) {
@@ -207,6 +273,26 @@ function documentoJaExiste(): boolean {
   });
 }
 
+function normalizarCep(cep?: string | null): string {
+  return String(cep || '')
+    .replace(/\D/g, '')
+    .trim();
+}
+
+async function cepExiste(cep?: string | null): Promise<boolean> {
+  const cepNormalizado = normalizarCep(cep);
+
+  if (!cepNormalizado) return true; // sem CEP, pode salvar
+  if (cepNormalizado.length !== 8) return false;
+
+  try {
+    const { data } = await axios.get(`https://viacep.com.br/ws/${cepNormalizado}/json/`);
+    return !data?.erro;
+  } catch {
+    return false;
+  }
+}
+
 async function salvarCliente(): Promise<void> {
   if (documentoJaExiste()) {
     Notify.create({
@@ -214,6 +300,20 @@ async function salvarCliente(): Promise<void> {
       message: 'Já existe um cliente com este documento',
     });
     return;
+  }
+
+  const cepInformado = normalizarCep(form.value.cep);
+
+  if (cepInformado) {
+    const cepValido = await cepExiste(form.value.cep);
+
+    if (!cepValido) {
+      Notify.create({
+        type: 'warning',
+        message: 'O CEP informado não existe',
+      });
+      return;
+    }
   }
 
   try {
@@ -239,6 +339,10 @@ async function salvarCliente(): Promise<void> {
       nome: '',
       email: '',
       telefone: '',
+      cep: '',
+      endereco: '',
+      bairro: '',
+      numero: '',
       cidade: '',
     };
     editando.value = false;
@@ -254,6 +358,57 @@ async function salvarCliente(): Promise<void> {
     });
   }
 }
+
+const buscandoCep = ref(false);
+
+let cepTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function limparMascaraCep(valor?: string | null): string {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+async function buscarEnderecoPorCep(cep: string): Promise<void> {
+  buscandoCep.value = true;
+
+  try {
+    const { data } = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+
+    if (data?.erro) {
+      Notify.create({
+        type: 'warning',
+        message: 'CEP não encontrado',
+      });
+      return;
+    }
+
+    form.value.cep = data.cep || form.value.cep;
+    form.value.endereco = data.logradouro || '';
+    form.value.bairro = data.bairro || '';
+    form.value.cidade = data.localidade || '';
+  } catch {
+    Notify.create({
+      type: 'negative',
+      message: 'Erro ao buscar CEP',
+    });
+  } finally {
+    buscandoCep.value = false;
+  }
+}
+
+watch(
+  () => form.value.cep,
+  (valor) => {
+    const cep = limparMascaraCep(valor);
+
+    if (cepTimeout) clearTimeout(cepTimeout);
+
+    if (cep.length !== 8) return;
+
+    cepTimeout = setTimeout(() => {
+      void buscarEnderecoPorCep(cep);
+    }, 400);
+  },
+);
 
 onMounted(() => {
   void carregarClientes();

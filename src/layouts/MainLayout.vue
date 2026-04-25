@@ -71,7 +71,7 @@
           <q-item-section avatar>
             <q-icon name="add_shopping_cart" />
           </q-item-section>
-          <q-item-section>Novo Pedido</q-item-section>
+          <q-item-section>Criar Pedido</q-item-section>
         </q-item>
 
         <q-item clickable to="/pedidos/lista" active-class="menu-active">

@@ -38,7 +38,15 @@
       </div>
     </div>
 
-    <q-table :rows="clientes" :columns="columns" row-key="id" flat bordered class="border">
+    <q-table
+      :rows="clientes"
+      :columns="columns"
+      row-key="id"
+      flat
+      bordered
+      class="border grade-azul"
+      no-data-label="Nenhum cliente encontrado"
+    >
       <template v-slot:body-cell-acoes="props">
         <q-td>
           <q-btn icon="edit" size="sm" flat color="primary" @click="editarCliente(props.row)" />
@@ -264,5 +272,25 @@ onMounted(() => {
 
 .border {
   border-radius: 12px;
+}
+
+/* Se estiver usando <style scoped> */
+.grade-azul :deep(.q-table thead tr) {
+  background-color: #0057d9;
+}
+
+.grade-azul :deep(.q-table thead th) {
+  background-color: #0057d9;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  height: 42px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 2px solid #dcdcdc;
+}
+
+.grade-azul :deep(.q-table thead th:last-child) {
+  border-right: none;
 }
 </style>

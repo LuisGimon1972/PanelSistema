@@ -51,7 +51,15 @@
       </div>
     </div>
 
-    <q-table :rows="produtos" :columns="columns" row-key="id" flat bordered class="border">
+    <q-table
+      :rows="produtos"
+      :columns="columns"
+      row-key="id"
+      flat
+      bordered
+      class="border grade-azul"
+      no-data-label="Nenhum produto encontrado"
+    >
       <template v-slot:body-cell-foto="props">
         <q-td>
           <q-avatar v-if="props.row.foto" rounded size="42px">
@@ -541,5 +549,24 @@ onMounted(() => {
 <style scoped>
 .border {
   border-radius: 12px;
+}
+/* Se estiver usando <style scoped> */
+.grade-azul :deep(.q-table thead tr) {
+  background-color: #0057d9;
+}
+
+.grade-azul :deep(.q-table thead th) {
+  background-color: #0057d9;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  height: 42px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 2px solid #dcdcdc;
+}
+
+.grade-azul :deep(.q-table thead th:last-child) {
+  border-right: none;
 }
 </style>

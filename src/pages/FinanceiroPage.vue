@@ -48,11 +48,11 @@
       <q-card-section>
         <div class="row q-col-gutter-md items-end">
           <div class="col-12 col-md-3">
-            <q-input v-model="filtros.data_inicio" type="date" outlined label="Data início" />
+            <q-input v-model="filtros.data_inicio" type="date" outlined dense label="Data início" />
           </div>
 
           <div class="col-12 col-md-3">
-            <q-input v-model="filtros.data_fim" type="date" outlined label="Data fim" />
+            <q-input v-model="filtros.data_fim" type="date" outlined dense label="Data fim" />
           </div>
 
           <div class="col-12 col-md-3">
@@ -63,6 +63,7 @@
               map-options
               outlined
               clearable
+              dense
               label="Origem"
             />
           </div>
@@ -135,7 +136,7 @@
         <div class="text-h6 q-mb-md">Entradas</div>
 
         <q-table
-          class="border"
+          class="border grade-azul"
           flat
           bordered
           dense
@@ -208,9 +209,18 @@ const resumoPeriodo = ref<ResumoFinanceiro>({
   total_pdv: 0,
 });
 
+function dataAtualInput(): string {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+
+  return `${ano}-${mes}-${dia}`;
+}
+
 const filtros = ref({
-  data_inicio: '',
-  data_fim: '',
+  data_inicio: dataAtualInput(),
+  data_fim: dataAtualInput(),
   origem: '' as '' | 'PEDIDO' | 'PDV',
 });
 
@@ -220,12 +230,12 @@ const origemOptions = [
 ];
 
 const columns = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left' as const },
-  { name: 'data', label: 'Data', field: 'data', align: 'left' as const },
+  { name: 'id', label: 'ID', field: 'id', align: 'center' as const },
+  { name: 'data', label: 'Data', field: 'data', align: 'center' as const },
   { name: 'origem', label: 'Origem', field: 'origem', align: 'left' as const },
   { name: 'forma_pagamento', label: 'Pagamento', field: 'forma_pagamento', align: 'left' as const },
   { name: 'descricao', label: 'Descrição', field: 'descricao', align: 'left' as const },
-  { name: 'valor', label: 'Valor', field: 'valor', align: 'left' as const },
+  { name: 'valor', label: 'Valor', field: 'valor', align: 'right' as const },
 ];
 
 function formatarMoeda(valor: number): string {
@@ -320,9 +330,11 @@ async function aplicarFiltros() {
 }
 
 async function limparFiltros() {
+  const hoje = dataAtualInput();
+
   filtros.value = {
-    data_inicio: '',
-    data_fim: '',
+    data_inicio: hoje,
+    data_fim: hoje,
     origem: '',
   };
 
@@ -337,5 +349,24 @@ onMounted(async () => {
 <style scoped>
 .border {
   border-radius: 12px;
+}
+/* Se estiver usando <style scoped> */
+.grade-azul :deep(.q-table thead tr) {
+  background-color: #0057d9;
+}
+
+.grade-azul :deep(.q-table thead th) {
+  background-color: #0057d9;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  height: 42px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 2px solid #dcdcdc;
+}
+
+.grade-azul :deep(.q-table thead th:last-child) {
+  border-right: none;
 }
 </style>

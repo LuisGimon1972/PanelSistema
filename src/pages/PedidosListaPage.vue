@@ -52,7 +52,7 @@
           </div>
         </div>
         <q-table
-          class="border"
+          class="border grade-azul"
           flat
           bordered
           dense
@@ -452,5 +452,24 @@ onMounted(() => {
 <style scoped>
 .border {
   border-radius: 12px;
+}
+/* Se estiver usando <style scoped> */
+.grade-azul :deep(.q-table thead tr) {
+  background-color: #0057d9;
+}
+
+.grade-azul :deep(.q-table thead th) {
+  background-color: #0057d9;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  height: 42px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 2px solid #dcdcdc;
+}
+
+.grade-azul :deep(.q-table thead th:last-child) {
+  border-right: none;
 }
 </style>

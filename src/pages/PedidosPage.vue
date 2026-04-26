@@ -1247,7 +1247,6 @@ async function confirmarFaturamento() {
     }
 
     const valor = Number(String(item.valor).replace(',', '.'));
-
     return !Number.isFinite(valor) || valor < 0;
   });
 
@@ -1269,18 +1268,25 @@ async function confirmarFaturamento() {
     return;
   }
 
+  let restanteCentavos = totalPedidoCentavos.value;
+
+  for (const item of pagamentosValidos) {
+    if (isFormaSemTroco(item.forma) && item.valorCentavos !== restanteCentavos) {
+      Notify.create({
+        type: 'warning',
+        message: `O valor do ${item.forma} deve ser exatamente o valor faltante de R$ ${centavosParaValor(restanteCentavos).toFixed(2)}.`,
+      });
+      return;
+    }
+
+    const valorAplicadoCentavos = Math.min(item.valorCentavos, restanteCentavos);
+    restanteCentavos = Math.max(0, restanteCentavos - valorAplicadoCentavos);
+  }
+
   if (totalInformadoCentavos.value < totalPedidoCentavos.value) {
     Notify.create({
       type: 'warning',
       message: 'O total pago é menor que o valor do pedido',
-    });
-    return;
-  }
-
-  if (totalSemTrocoCentavos.value > totalPedidoCentavos.value) {
-    Notify.create({
-      type: 'warning',
-      message: 'PIX e Cartão não podem gerar troco. Ajuste o valor informado.',
     });
     return;
   }
@@ -1309,18 +1315,25 @@ async function salvarPedidoComPagamento() {
     return;
   }
 
+  let restanteCentavos = totalPedidoCentavos.value;
+
+  for (const item of pagamentosPayloadCentavos) {
+    if (isFormaSemTroco(item.forma) && item.valorCentavos !== restanteCentavos) {
+      Notify.create({
+        type: 'warning',
+        message: `O valor do ${item.forma} deve ser exatamente o valor faltante de R$ ${centavosParaValor(restanteCentavos).toFixed(2)}.`,
+      });
+      return;
+    }
+
+    const valorAplicadoCentavos = Math.min(item.valorCentavos, restanteCentavos);
+    restanteCentavos = Math.max(0, restanteCentavos - valorAplicadoCentavos);
+  }
+
   if (totalInformadoCentavos.value < totalPedidoCentavos.value) {
     Notify.create({
       type: 'warning',
       message: 'O total pago é menor que o valor do pedido',
-    });
-    return;
-  }
-
-  if (totalSemTrocoCentavos.value > totalPedidoCentavos.value) {
-    Notify.create({
-      type: 'warning',
-      message: 'PIX e Cartão não podem gerar troco. Ajuste o valor informado.',
     });
     return;
   }
@@ -1337,7 +1350,6 @@ async function salvarPedidoComPagamento() {
   }));
 
   const pagamentosComprovante = pagamentosPayload.map((item) => ({ ...item }));
-
   const clienteNomeComprovante = nomeClienteSelecionado.value || 'Não informado';
 
   const subtotalComprovante = centavosParaValor(subtotalPedidoCentavos.value);

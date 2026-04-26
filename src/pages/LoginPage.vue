@@ -60,6 +60,16 @@
             class="full-width"
             :loading="loading"
           />
+          <q-btn
+            label="Criar usuário"
+            type="button"
+            color="secondary"
+            outline
+            rounded
+            dense
+            class="full-width q-mt-sm"
+            @click="dialogCriarUsuario = true"
+          />
 
           <div class="text-center text-grey-7 text-caption q-mt-xs">
             Use seu email e senha para acessar
@@ -67,6 +77,113 @@
         </q-form>
       </q-card-section>
     </q-card>
+    <q-dialog v-model="dialogCriarUsuario" persistent>
+      <q-card style="width: 100%; max-width: 420px">
+        <q-card-section>
+          <div class="text-h6 text-primary">Criar novo usuário</div>
+          <div class="text-caption text-grey-7">
+            Informe os dados do usuário e a senha do administrador.
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-form @submit.prevent="criarUsuario" class="q-gutter-sm">
+            <q-input
+              v-model="novoUsuario.nome"
+              label="Nome"
+              outlined
+              dense
+              rounded
+              :rules="[(val) => !!val || 'Informe o nome']"
+            >
+              <template #prepend>
+                <q-icon name="person" color="primary" size="18px" />
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="novoUsuario.email"
+              label="Email"
+              type="email"
+              outlined
+              dense
+              rounded
+              :rules="[
+                (val) => !!val || 'Informe o email',
+                (val) => /.+@.+\..+/.test(val) || 'Email inválido',
+              ]"
+            >
+              <template #prepend>
+                <q-icon name="mail" color="primary" size="18px" />
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="novoUsuario.senha"
+              label="Senha do novo usuário"
+              type="password"
+              outlined
+              dense
+              rounded
+              :rules="[(val) => !!val || 'Informe a senha']"
+            >
+              <template #prepend>
+                <q-icon name="lock" color="primary" size="18px" />
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="novoUsuario.confirmarSenha"
+              label="Confirmar senha"
+              type="password"
+              outlined
+              dense
+              rounded
+              :rules="[
+                (val) => !!val || 'Confirme a senha',
+                (val) => val === novoUsuario.senha || 'As senhas não conferem',
+              ]"
+            >
+              <template #prepend>
+                <q-icon name="lock" color="primary" size="18px" />
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="novoUsuario.senhaAdministrador"
+              label="Senha do administrador"
+              type="password"
+              outlined
+              dense
+              rounded
+              :rules="[(val) => !!val || 'Informe a senha do administrador']"
+            >
+              <template #prepend>
+                <q-icon name="admin_panel_settings" color="primary" size="18px" />
+              </template>
+            </q-input>
+
+            <q-card-actions align="right" class="q-px-none">
+              <q-btn
+                label="Cancelar"
+                flat
+                color="grey-7"
+                :disable="loadingCriarUsuario"
+                @click="fecharDialogCriarUsuario"
+              />
+
+              <q-btn
+                label="Criar"
+                type="submit"
+                color="primary"
+                unelevated
+                :loading="loadingCriarUsuario"
+              />
+            </q-card-actions>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -86,6 +203,89 @@ const form = ref({
   senha: '',
 });
 
+const dialogCriarUsuario = ref(false);
+const loadingCriarUsuario = ref(false);
+
+const novoUsuario = ref({
+  nome: '',
+  email: '',
+  senha: '',
+  confirmarSenha: '',
+  senhaAdministrador: '',
+});
+
+function limparNovoUsuario() {
+  novoUsuario.value = {
+    nome: '',
+    email: '',
+    senha: '',
+    confirmarSenha: '',
+    senhaAdministrador: '',
+  };
+}
+
+function fecharDialogCriarUsuario() {
+  dialogCriarUsuario.value = false;
+  limparNovoUsuario();
+}
+
+async function criarUsuario() {
+  if (
+    !novoUsuario.value.nome ||
+    !novoUsuario.value.email ||
+    !novoUsuario.value.senha ||
+    !novoUsuario.value.confirmarSenha ||
+    !novoUsuario.value.senhaAdministrador
+  ) {
+    Notify.create({
+      type: 'warning',
+      message: 'Preencha todos os campos',
+    });
+    return;
+  }
+
+  if (!/.+@.+\..+/.test(novoUsuario.value.email)) {
+    Notify.create({
+      type: 'warning',
+      message: 'Email inválido',
+    });
+    return;
+  }
+
+  if (novoUsuario.value.senha !== novoUsuario.value.confirmarSenha) {
+    Notify.create({
+      type: 'warning',
+      message: 'As senhas não conferem',
+    });
+    return;
+  }
+
+  loadingCriarUsuario.value = true;
+
+  try {
+    await api.post('/auth/registrar', {
+      nome: novoUsuario.value.nome,
+      email: novoUsuario.value.email,
+      senha: novoUsuario.value.senha,
+      senhaAdministrador: novoUsuario.value.senhaAdministrador,
+    });
+
+    Notify.create({
+      type: 'positive',
+      message: 'Usuário criado com sucesso',
+    });
+
+    fecharDialogCriarUsuario();
+  } catch (error: any) {
+    Notify.create({
+      type: 'negative',
+      message: error.response?.data?.erro || 'Erro ao criar usuário',
+    });
+  } finally {
+    loadingCriarUsuario.value = false;
+  }
+}
+
 async function fazerLogin() {
   if (!form.value.email || !form.value.senha) {
     Notify.create({
@@ -98,17 +298,30 @@ async function fazerLogin() {
   loading.value = true;
 
   try {
-    const { data } = await api.post('/auth/login', form.value);
+    const { data } = await api.post('/auth/login', {
+      email: form.value.email,
+      senha: form.value.senha,
+    });
 
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('usuario', JSON.stringify(data.usuario));
+    if (!data?.token) {
+      Notify.create({
+        type: 'negative',
+        message: 'Token não retornado pelo servidor',
+      });
+      return;
+    }
+
+    sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('usuario', JSON.stringify(data.usuario));
+
+    console.log('TOKEN SALVO:', sessionStorage.getItem('token'));
 
     Notify.create({
       type: 'positive',
       message: 'Login realizado com sucesso',
     });
 
-    await router.push('/');
+    await router.replace('/');
   } catch (error: any) {
     Notify.create({
       type: 'negative',

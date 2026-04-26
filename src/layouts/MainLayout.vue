@@ -112,7 +112,7 @@ const router = useRouter();
 const leftDrawerOpen = ref(true);
 
 const usuario = computed<Usuario | null>(() => {
-  const usuarioSalvo = localStorage.getItem('usuario');
+  const usuarioSalvo = sessionStorage.getItem('usuario');
 
   if (!usuarioSalvo) return null;
 
@@ -128,15 +128,15 @@ function toggleLeftDrawer() {
 }
 
 async function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('usuario');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('usuario');
 
   Notify.create({
     type: 'info',
     message: 'Sessão encerrada com sucesso',
   });
 
-  await router.push('/login');
+  await router.replace('/login');
 }
 </script>
 

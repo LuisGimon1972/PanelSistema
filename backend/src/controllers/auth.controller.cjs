@@ -3,16 +3,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 async function registrar(req, res) {
-  const { nome, email, senha } = req.body;
+  const { nome, email, senha, senhaAdministrador } = req.body;
 
-  if (!nome || !email || !senha) {
+  if (!nome || !email || !senha || !senhaAdministrador) {
     return res.status(400).json({
-      erro: 'Nome, email e senha são obrigatórios',
+      erro: 'Nome, email, senha e senha do administrador são obrigatórios',
+    });
+  }
+
+  if (senhaAdministrador !== '87654321') {
+    return res.status(403).json({
+      erro: 'Senha do administrador inválida',
     });
   }
 
   try {
-    const existe = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
+    const emailNormalizado = email.trim().toLowerCase();
+
+    const existe = await pool.query('SELECT id FROM usuarios WHERE email = $1', [emailNormalizado]);
 
     if (existe.rows.length > 0) {
       return res.status(409).json({
@@ -28,15 +36,19 @@ async function registrar(req, res) {
       VALUES ($1, $2, $3)
       RETURNING id, nome, email
       `,
-      [nome, email, senhaHash],
+      [nome.trim(), emailNormalizado, senhaHash],
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       sucesso: true,
       usuario: result.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('Erro ao registrar usuário:', err);
+
+    return res.status(500).json({
+      erro: 'Erro interno ao registrar usuário',
+    });
   }
 }
 
@@ -50,7 +62,19 @@ async function login(req, res) {
   }
 
   try {
-    const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET não configurado');
+      return res.status(500).json({
+        erro: 'Erro de configuração do servidor',
+      });
+    }
+
+    const emailNormalizado = email.trim().toLowerCase();
+
+    const result = await pool.query(
+      'SELECT id, nome, email, senha FROM usuarios WHERE email = $1',
+      [emailNormalizado],
+    );
 
     if (result.rows.length === 0) {
       return res.status(401).json({
@@ -75,10 +99,12 @@ async function login(req, res) {
         nome: usuario.nome,
       },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' },
+      {
+        expiresIn: '1d',
+      },
     );
 
-    res.json({
+    return res.json({
       sucesso: true,
       token,
       usuario: {
@@ -88,7 +114,11 @@ async function login(req, res) {
       },
     });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('Erro ao fazer login:', err);
+
+    return res.status(500).json({
+      erro: 'Erro interno ao fazer login',
+    });
   }
 }
 

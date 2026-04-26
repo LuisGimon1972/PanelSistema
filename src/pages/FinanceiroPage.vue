@@ -47,15 +47,15 @@
     <q-card flat bordered class="q-mb-md border">
       <q-card-section>
         <div class="row q-col-gutter-md items-end">
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <q-input v-model="filtros.data_inicio" type="date" outlined dense label="Data início" />
           </div>
 
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <q-input v-model="filtros.data_fim" type="date" outlined dense label="Data fim" />
           </div>
 
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <q-select
               v-model="filtros.origem"
               :options="origemOptions"
@@ -68,7 +68,20 @@
             />
           </div>
 
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
+            <q-select
+              v-model="filtros.forma_pagamento"
+              :options="formaPagamentoOptions"
+              emit-value
+              map-options
+              outlined
+              clearable
+              dense
+              label="Forma de pagamento"
+            />
+          </div>
+
+          <div class="col-12 col-md-4">
             <div class="row q-col-gutter-sm">
               <div class="col">
                 <q-btn
@@ -81,9 +94,9 @@
 
               <div class="col">
                 <q-btn
-                  outline
-                  color="grey-8"
-                  label="Limpar"
+                  color="warning"
+                  icon="filter_alt_off"
+                  label="Limpar Filtros"
                   class="full-width border"
                   @click="limparFiltros"
                 />
@@ -222,7 +235,14 @@ const filtros = ref({
   data_inicio: dataAtualInput(),
   data_fim: dataAtualInput(),
   origem: '' as '' | 'PEDIDO' | 'PDV',
+  forma_pagamento: '' as '' | 'DINHEIRO' | 'PIX' | 'CARTAO',
 });
+
+const formaPagamentoOptions = [
+  { label: 'DINHEIRO', value: 'DINHEIRO' },
+  { label: 'PIX', value: 'PIX' },
+  { label: 'CARTAO', value: 'CARTAO' },
+];
 
 const origemOptions = [
   { label: 'PEDIDO', value: 'PEDIDO' },
@@ -305,6 +325,7 @@ async function carregarEntradas() {
         data_inicio: filtros.value.data_inicio || undefined,
         data_fim: filtros.value.data_fim || undefined,
         origem: filtros.value.origem || undefined,
+        forma_pagamento: filtros.value.forma_pagamento || undefined,
       },
     });
 
@@ -336,6 +357,7 @@ async function limparFiltros() {
     data_inicio: hoje,
     data_fim: hoje,
     origem: '',
+    forma_pagamento: '',
   };
 
   await Promise.all([carregarResumoPeriodo(), carregarEntradas()]);

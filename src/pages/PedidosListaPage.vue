@@ -17,7 +17,7 @@
 
     <q-card flat bordered class="border">
       <q-card-section>
-        <div class="row q-col-gutter-md q-mb-md">
+        <div class="row q-mb-md justify-end items-end">
           <div class="col-12 col-md-3">
             <q-select
               v-model="filtroOrigem"
@@ -29,7 +29,7 @@
             />
           </div>
 
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-3 q-ml-md">
             <q-select
               v-model="filtroStatus"
               :options="opcoesStatus"
@@ -40,7 +40,7 @@
             />
           </div>
 
-          <div class="col-12 col-md-3 flex items-end">
+          <div class="col-auto q-ml-md">
             <q-btn
               color="warning"
               icon="filter_alt_off"

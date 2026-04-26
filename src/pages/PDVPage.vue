@@ -260,7 +260,7 @@
             <q-separator class="q-my-md" />
 
             <q-btn
-              color="primary"
+              color="positive"
               icon="point_of_sale"
               label="Faturar"
               class="full-width"

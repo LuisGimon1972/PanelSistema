@@ -1,7 +1,7 @@
 const pool = require('../config/db.cjs');
 
 async function listarEntradas(req, res) {
-  const { data_inicio, data_fim, origem } = req.query;
+  const { data_inicio, data_fim, origem, forma_pagamento } = req.query;
 
   try {
     let sql = `
@@ -26,12 +26,17 @@ async function listarEntradas(req, res) {
       sql += ` AND origem = $${params.length}`;
     }
 
+    if (forma_pagamento) {
+      params.push(forma_pagamento);
+      sql += ` AND forma_pagamento = $${params.length}`;
+    }
+
     sql += ' ORDER BY data DESC';
 
     const { rows } = await pool.query(sql, params);
-    res.json(rows);
+    return res.json(rows);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    return res.status(500).json({ erro: err.message });
   }
 }
 

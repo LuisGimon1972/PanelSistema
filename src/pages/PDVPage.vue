@@ -783,6 +783,10 @@ function gerarHtmlComprovanteVenda(dados: DadosComprovanteVenda): string {
 
           <div class="centro">
             <div>Obrigado pela preferência</div>
+            <div style="margin-top: 10px; 
+            font-size: 9px; 
+            text-align: center;">
+            Impressão: VendaFlow Gestão Comercial</div>
           </div>
         </div>
       </body>

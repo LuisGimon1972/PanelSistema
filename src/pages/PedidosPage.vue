@@ -985,6 +985,10 @@ function gerarHtmlComprovantePedido(dados: DadosComprovantePedido): string {
       <div class="separador"></div>
 
       <div class="centralizado">Obrigado pela preferência</div>
+      <div style="margin-top: 10px; 
+            font-size: 9px; 
+            text-align: center;">
+            Impressão: VendaFlow Gestão Comercial</div>
     </div>
   </body>
 </html>`;

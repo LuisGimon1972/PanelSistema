@@ -49,8 +49,32 @@
     >
       <template v-slot:body-cell-acoes="props">
         <q-td>
-          <q-btn icon="edit" size="sm" flat color="primary" @click="editarCliente(props.row)" />
-          <q-btn icon="delete" size="sm" flat color="red" @click="excluirCliente(props.row.id)" />
+          <q-btn
+            v-if="props.row.status === 'ATIVO' && !isConsumidorFinal(props.row)"
+            icon="edit"
+            size="sm"
+            flat
+            color="primary"
+            @click="editarCliente(props.row)"
+          />
+
+          <q-btn
+            v-if="props.row.status === 'ATIVO' && !isConsumidorFinal(props.row)"
+            icon="delete"
+            size="sm"
+            flat
+            color="red"
+            @click="excluirCliente(props.row.id)"
+          />
+
+          <q-btn
+            v-else-if="!isConsumidorFinal(props.row)"
+            icon="check_circle"
+            size="sm"
+            flat
+            color="positive"
+            @click="ativarCliente(props.row.id)"
+          />
         </q-td>
       </template>
     </q-table>
@@ -128,7 +152,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
-import { Notify } from 'quasar';
+import { Notify, Dialog } from 'quasar';
 import type { QTableProps } from 'quasar';
 
 type StatusCliente = 'ATIVO' | 'INATIVO';
@@ -152,7 +176,7 @@ interface ApiErrorResponse {
 }
 
 const filtroBusca = ref<string>('');
-const filtroStatus = ref<StatusCliente | ''>('');
+const filtroStatus = ref<StatusCliente | ''>('ATIVO');
 
 const clientes = ref<Cliente[]>([]);
 const dialog = ref<boolean>(false);
@@ -214,25 +238,69 @@ function editarCliente(cliente: Cliente): void {
 
 async function excluirCliente(id?: number): Promise<void> {
   if (id == null) return;
-  if (!confirm('Deseja excluir este cliente?')) return;
 
-  try {
-    await axios.delete(`http://localhost:3000/clientes/${id}`);
+  Dialog.create({
+    title: 'Confirmação',
+    message: 'Deseja excluir este cliente?',
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await axios.delete(`http://localhost:3000/clientes/${id}`);
 
-    Notify.create({
-      type: 'positive',
-      message: 'Cliente excluído com sucesso',
-    });
+      Notify.create({
+        type: 'positive',
+        message: 'Cliente excluído com sucesso',
+      });
 
-    await carregarClientes();
-  } catch (err: unknown) {
-    const error = err as { response?: { data?: ApiErrorResponse } };
+      await carregarClientes();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: ApiErrorResponse } };
 
-    Notify.create({
-      type: 'negative',
-      message: error.response?.data?.erro || 'Erro ao excluir cliente',
-    });
-  }
+      Notify.create({
+        type: 'negative',
+        message: error.response?.data?.erro || 'Erro ao excluir cliente',
+      });
+    }
+  });
+}
+
+async function ativarCliente(id?: number): Promise<void> {
+  if (!id || id <= 0) return;
+
+  Dialog.create({
+    title: 'Confirmar ativação',
+    message: 'Deseja ativar este cliente?',
+    ok: {
+      label: 'Ativar',
+      color: 'positive',
+      unelevated: true,
+    },
+    cancel: {
+      label: 'Cancelar',
+      color: 'grey-7',
+      flat: true,
+    },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await axios.patch(`http://localhost:3000/clientes/${id}/status`, {
+        status: 'ATIVO',
+      });
+
+      Notify.create({
+        type: 'positive',
+        message: 'Cliente ativado com sucesso',
+      });
+
+      await carregarClientes();
+    } catch (error: any) {
+      Notify.create({
+        type: 'negative',
+        message: error?.response?.data?.erro || 'Erro ao ativar cliente',
+      });
+    }
+  });
 }
 
 function abrirDialog(): void {
@@ -378,6 +446,10 @@ async function buscarEnderecoPorCep(cep: string): Promise<void> {
         type: 'warning',
         message: 'CEP não encontrado',
       });
+      form.value.endereco = '';
+      form.value.bairro = '';
+      form.value.numero = '';
+      form.value.cidade = '';
       return;
     }
 
@@ -393,6 +465,10 @@ async function buscarEnderecoPorCep(cep: string): Promise<void> {
   } finally {
     buscandoCep.value = false;
   }
+}
+
+function isConsumidorFinal(cliente?: Cliente): boolean {
+  return (cliente?.nome || '').trim().toUpperCase() === 'CONSUMIDOR FINAL';
 }
 
 watch(

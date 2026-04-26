@@ -7,5 +7,6 @@ router.get('/:id', controller.buscarCliente);
 router.post('/', controller.criarCliente);
 router.put('/:id', controller.atualizarCliente);
 router.delete('/:id', controller.excluirCliente);
+router.patch('/:id/status', controller.atualizarStatusCliente);
 
 module.exports = router;

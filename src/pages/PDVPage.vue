@@ -823,7 +823,12 @@ function imprimirComprovanteVenda(dados: DadosComprovanteVenda) {
 }
 
 async function carregarClientes() {
-  const { data } = await api.get<Cliente[]>('/clientes');
+  const { data } = await api.get<Cliente[]>('/clientes', {
+    params: {
+      status: 'ATIVO',
+    },
+  });
+
   clientes.value = data;
 
   clientesOptions.value = data.map((cliente) => ({

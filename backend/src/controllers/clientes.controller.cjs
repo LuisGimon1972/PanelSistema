@@ -137,14 +137,69 @@ async function atualizarCliente(req, res) {
   }
 }
 
+async function atualizarStatusCliente(req, res) {
+  const id = Number(req.params.id);
+  const status = req.body?.status?.trim?.().toUpperCase();
+
+  const statusValidos = ['ATIVO', 'INATIVO'];
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
+
+  if (!statusValidos.includes(status)) {
+    return res.status(400).json({ erro: 'Status inválido' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE clientes
+      SET status = $1
+      WHERE id = $2
+      RETURNING *
+      `,
+      [status, id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ erro: 'Cliente não encontrado' });
+    }
+
+    return res.status(200).json({
+      sucesso: true,
+      mensagem:
+        status === 'ATIVO' ? 'Cliente ativado com sucesso' : 'Cliente desativado com sucesso',
+      cliente: result.rows[0],
+    });
+  } catch (err) {
+    console.error('Erro ao atualizar status do cliente:', err);
+
+    return res.status(500).json({
+      erro: 'Erro ao atualizar status do cliente',
+    });
+  }
+}
+
 async function excluirCliente(req, res) {
   const { id } = req.params;
 
   try {
-    const result = await pool.query('DELETE FROM clientes WHERE id = $1 RETURNING id', [id]);
+    const result = await pool.query(
+      `
+      UPDATE clientes
+      SET status = 'INATIVO'
+      WHERE id = $1
+        AND status = 'ATIVO'
+      RETURNING id
+      `,
+      [id],
+    );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ erro: 'Cliente não encontrado' });
+      return res.status(404).json({
+        erro: 'Cliente não encontrado ou já desativado',
+      });
     }
 
     res.json({
@@ -162,4 +217,5 @@ module.exports = {
   criarCliente,
   atualizarCliente,
   excluirCliente,
+  atualizarStatusCliente,
 };

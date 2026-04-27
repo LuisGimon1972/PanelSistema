@@ -106,12 +106,12 @@
             </div>
 
             <div v-else>
-  <div ref="scrollCarrinhoRef" class="scroll-carrinho">
-    <div
-      v-for="item in carrinho"
-      :key="item.produto_id"
-      class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
-    >
+              <div ref="scrollCarrinhoRef" class="scroll-carrinho">
+                <div
+                  v-for="item in carrinho"
+                  :key="item.produto_id"
+                  class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
+                >
                   <div class="row items-center justify-between q-col-gutter-sm">
                     <div class="col" style="margin-top: -15px">
                       <div class="text-weight-medium">{{ item.nome }}</div>
@@ -120,11 +120,11 @@
                       </div>
                     </div>
                     <div class="col-auto">
-    <q-avatar size="45px" rounded>
-      <img v-if="item.foto" :src="item.foto" alt="Foto do produto" />
-      <q-icon v-else name="image" color="grey-5" />
-    </q-avatar>
-  </div>
+                      <q-avatar size="45px" rounded>
+                        <img v-if="item.foto" :src="item.foto" alt="Foto do produto" />
+                        <q-icon v-else name="image" color="grey-5" />
+                      </q-avatar>
+                    </div>
 
                     <div class="col-auto">
                       <q-btn
@@ -1223,7 +1223,7 @@ onMounted(async () => {
 }
 
 .scroll-carrinho {
-  max-height: 170px;
+  max-height: 200px;
   overflow-y: auto;
 }
 

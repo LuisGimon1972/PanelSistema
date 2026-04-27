@@ -119,6 +119,12 @@
                         {{ formatarMoeda(item.preco) }} por unidade
                       </div>
                     </div>
+                    <div class="col-auto">
+    <q-avatar size="45px" rounded>
+      <img v-if="item.foto" :src="item.foto" alt="Foto do produto" />
+      <q-icon v-else name="image" color="grey-5" />
+    </q-avatar>
+  </div>
 
                     <div class="col-auto">
                       <q-btn
@@ -390,6 +396,7 @@ interface Produto {
   preco: number;
   estoque: number;
   status?: string;
+  foto: string;
 }
 
 interface OptionItem {
@@ -404,6 +411,7 @@ interface ItemCarrinho {
   quantidade: number;
   subtotal: number;
   estoqueDisponivel: number;
+  foto: string;
 }
 
 interface PagamentoInformado {
@@ -955,6 +963,7 @@ function adicionarProduto(produto: Produto) {
       preco: Number(produto.preco),
       quantidade: 1,
       subtotal: Number(produto.preco),
+      foto: produto.foto,
       estoqueDisponivel: Number(produto.estoque),
     });
     tocarBeep();

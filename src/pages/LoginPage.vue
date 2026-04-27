@@ -86,7 +86,7 @@
       <img :src="presenta" alt="Apresentação" class="login-image" />
     </div>
     <q-dialog v-model="dialogCriarUsuario" persistent>
-      <q-card style="width: 100%; max-width: 420px">
+      <q-card style="width: 100%; max-width: 420px" class="border">
         <q-card-section>
           <div class="text-h6 text-primary">Criar novo usuário</div>
           <div class="text-caption text-grey-7">
@@ -349,11 +349,9 @@ function limparLogin() {
 
   mostrarSenha.value = false;
 
-  // Limpa sessão atual ao abrir a tela de login
   sessionStorage.removeItem('token');
   sessionStorage.removeItem('usuario');
 
-  // Remove dados antigos que ficaram salvos antes no localStorage
   localStorage.removeItem('token');
   localStorage.removeItem('usuario');
 }
@@ -364,6 +362,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.border {
+  border-radius: 12px;
+}
+
 .login-wrapper {
   min-height: 100vh;
 }

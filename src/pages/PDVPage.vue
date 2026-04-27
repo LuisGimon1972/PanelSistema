@@ -106,12 +106,12 @@
             </div>
 
             <div v-else>
-              <div class="scroll-carrinho">
-                <div
-                  v-for="item in carrinho"
-                  :key="item.produto_id"
-                  class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
-                >
+  <div ref="scrollCarrinhoRef" class="scroll-carrinho">
+    <div
+      v-for="item in carrinho"
+      :key="item.produto_id"
+      class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
+    >
                   <div class="row items-center justify-between q-col-gutter-sm">
                     <div class="col" style="margin-top: -15px">
                       <div class="text-weight-medium">{{ item.nome }}</div>
@@ -966,7 +966,9 @@ function adicionarProduto(produto: Produto) {
       foto: produto.foto,
       estoqueDisponivel: Number(produto.estoque),
     });
+
     tocarBeep();
+    rolarCarrinhoParaVisualizarUltimoItem();
   }
 }
 
@@ -1156,6 +1158,23 @@ function limparPagamentos() {
     { forma: 'CARTAO', label: 'Cartão', valor: null },
     { forma: 'PIX', label: 'PIX', valor: null },
   ];
+}
+
+const scrollCarrinhoRef = ref<HTMLElement | null>(null);
+
+function rolarCarrinhoParaVisualizarUltimoItem() {
+  nextTick(() => {
+    const container = scrollCarrinhoRef.value;
+    if (!container) return;
+
+    const ultimoItem = container.lastElementChild as HTMLElement | null;
+    if (!ultimoItem) return;
+
+    ultimoItem.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+    });
+  });
 }
 
 watch([descontoTipo, descontoValor], ([tipo, valor]) => {

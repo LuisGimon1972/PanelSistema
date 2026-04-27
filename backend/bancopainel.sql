@@ -208,9 +208,12 @@ ON public.financeiro_entradas (origem);
 -- =========================================================
 
 INSERT INTO public.clientes (nome, email, telefone, cidade, status)
-VALUES
-    ('Consumidor Final', 'ConsumidorFinal@sistema.local', '', '', 'ATIVO')
-ON CONFLICT (email) DO NOTHING;
+SELECT 'Consumidor Final', 'ConsumidorFinal@sistema.local', '', '', 'ATIVO'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.clientes
+    WHERE email = 'ConsumidorFinal@sistema.local'
+);
 
 
 -- Evita duplicar produtos toda vez que o script rodar

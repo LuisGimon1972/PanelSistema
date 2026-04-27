@@ -3,7 +3,12 @@
     <q-card class="login-card shadow-6">
       <q-card-section class="text-center q-pb-xs">
         <div class="text-h5 text-weight-bold text-primary">Bem-vindo</div>
-        <div class="text-caption text-grey-7 q-mt-xs">Acesse o Painel de Gestão Comercial</div>
+        <img
+          :src="logo"
+          alt="Logo"
+          style="width: 60px; height: 36px; object-fit: contain; margin-right: 10px"
+        />
+        <div class="text-caption text-grey-7 q-mt-xs">VendaFlow Gestão Comercial</div>
       </q-card-section>
 
       <q-card-section class="q-pt-sm">
@@ -77,6 +82,9 @@
         </q-form>
       </q-card-section>
     </q-card>
+    <div class="login-image-container">
+      <img :src="presenta" alt="Apresentação" class="login-image" />
+    </div>
     <q-dialog v-model="dialogCriarUsuario" persistent>
       <q-card style="width: 100%; max-width: 420px">
         <q-card-section>
@@ -188,11 +196,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Notify } from 'quasar';
 import { api } from 'boot/axios';
-
+import presenta from 'src/assets/presenta.jpg';
+import logo from 'src/assets/vflogo.jpg';
 const router = useRouter();
 
 const loading = ref(false);
@@ -331,6 +340,27 @@ async function fazerLogin() {
     loading.value = false;
   }
 }
+
+function limparLogin() {
+  form.value = {
+    email: '',
+    senha: '',
+  };
+
+  mostrarSenha.value = false;
+
+  // Limpa sessão atual ao abrir a tela de login
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('usuario');
+
+  // Remove dados antigos que ficaram salvos antes no localStorage
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+}
+
+onMounted(() => {
+  limparLogin();
+});
 </script>
 
 <style scoped>
@@ -347,5 +377,22 @@ async function fazerLogin() {
   width: 100%;
   max-width: 340px;
   border-radius: 16px;
+}
+
+.login-image-container {
+  margin-left: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 600px;
+  width: 100%;
+}
+
+.login-image {
+  width: 100%;
+  max-width: 600px;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 18px;
 }
 </style>

@@ -35,57 +35,57 @@
       :width="240"
     >
       <q-list padding>
-        <q-item-label header class="text-white text-center text-weight-bold text-subtitle1 q-py-md">
-          Menu do Painel
-        </q-item-label>
+	<q-item-label header class="text-white text-center text-weight-bold text-h6 q-py-md">
+	  Menu do Sistema
+	</q-item-label>
 
-        <q-item clickable to="/" exact active-class="menu-active">
-          <q-item-section avatar>
-            <q-icon name="dashboard" />
-          </q-item-section>
-          <q-item-section>Dashboard</q-item-section>
-        </q-item>
+       <q-item clickable to="/" exact active-class="menu-active">
+	  <q-item-section avatar>
+    		<q-icon name="dashboard" />
+	  </q-item-section>
+	  <q-item-section style="font-size: 16px;">Dashboard</q-item-section>
+	</q-item>
 
         <q-item clickable to="/financeiro" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="payments" />
           </q-item-section>
-          <q-item-section>Financeiro</q-item-section>
+          <q-item-section style="font-size: 16px;">Financeiro</q-item-section>
         </q-item>
 
         <q-item clickable to="/clientes" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="people" />
           </q-item-section>
-          <q-item-section>Clientes</q-item-section>
+          <q-item-section style="font-size: 16px;">Clientes</q-item-section>
         </q-item>
 
         <q-item clickable to="/produtos" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="inventory_2" />
           </q-item-section>
-          <q-item-section>Produtos</q-item-section>
+          <q-item-section style="font-size: 16px;">Produtos</q-item-section>
         </q-item>
 
         <q-item clickable to="/pedidos" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="add_shopping_cart" />
           </q-item-section>
-          <q-item-section>Criar Pedido</q-item-section>
+          <q-item-section style="font-size: 16px;">Criar Pedido</q-item-section>
         </q-item>
 
         <q-item clickable to="/pedidos/lista" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="receipt_long" />
           </q-item-section>
-          <q-item-section>Pedidos e Vendas</q-item-section>
+          <q-item-section style="font-size: 16px;">Pedidos e Vendas</q-item-section>
         </q-item>
 
         <q-item clickable to="/pdv" active-class="menu-active">
           <q-item-section avatar>
             <q-icon name="point_of_sale" />
           </q-item-section>
-          <q-item-section>PDV</q-item-section>
+          <q-item-section style="font-size: 16px;">PDV</q-item-section>
         </q-item>
       </q-list>
     </q-drawer>
@@ -145,6 +145,6 @@ async function logout() {
   background-color: rgba(255, 255, 255, 0.2);
   color: black;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 10px;  
 }
 </style>

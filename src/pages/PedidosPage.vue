@@ -590,10 +590,6 @@ function limparPagamentos() {
   pagamentos.value = criarPagamentosIniciais();
 }
 
-/**
- * Cálculos financeiros em centavos.
- * Evita problemas como 841.719999999 e falsos erros de pagamento.
- */
 function normalizarTexto(valor?: string): string {
   return (valor || '')
     .toUpperCase()
@@ -620,13 +616,12 @@ function textoMonetarioParaNumero(value: unknown): number | null {
   const temPonto = texto.includes('.');
 
   if (temVirgula && temPonto) {
-    // Exemplo: 1.234,56
     texto = texto.replace(/\./g, '').replace(',', '.');
   } else if (temVirgula) {
-    // Exemplo: 341,72
+
     texto = texto.replace(',', '.');
   } else if (temPonto && /^\d{1,3}(\.\d{3})+$/.test(texto)) {
-    // Exemplo: 1.234
+
     texto = texto.replace(/\./g, '');
   }
 
@@ -1290,14 +1285,6 @@ function validarPagamentosFaturamento(): boolean {
     return false;
   }
 
-  /**
-   * Mesma lógica usada no PDV:
-   * - Começa com o total do pedido como valor restante.
-   * - Percorre os pagamentos na ordem das linhas.
-   * - PIX e cartão não podem ser maiores que o restante.
-   * - Dinheiro pode ser maior que o restante, porque gera troco.
-   * - Cada pagamento aplicado reduz o restante.
-   */
   let restanteCentavos = totalPedidoCentavos.value;
 
   for (const item of pagamentosValidos) {
@@ -1438,13 +1425,13 @@ async function salvarPedidoComPagamento() {
 
       forma_pagamento: formaPagamentoResumo,
 
-      // Valor bruto informado pelo cliente.
+
       valor_recebido: centavosParaValor(totalInformadoCentavos.value),
 
-      // Troco devolvido ao cliente.
+
       troco: trocoComprovante,
 
-      // Valores líquidos para financeiro.
+
       pagamentos: pagamentosPayload,
 
       itens: itens.value.map((item) => ({

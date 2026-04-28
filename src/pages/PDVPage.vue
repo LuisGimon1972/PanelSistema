@@ -113,17 +113,17 @@
                   class="q-mb-md q-pa-sm rounded-borders bg-grey-1"
                 >
                   <div class="row items-center justify-between q-col-gutter-sm">
+                    <div class="col-auto">
+                      <q-avatar size="55px" rounded>
+                        <img v-if="item.foto" :src="item.foto" alt="Foto do produto" />
+                        <q-icon v-else name="image" color="grey-5" />
+                      </q-avatar>
+                    </div>
                     <div class="col" style="margin-top: -15px">
                       <div class="text-weight-medium">{{ item.nome }}</div>
                       <div class="text-caption text-grey-7">
                         {{ formatarMoeda(item.preco) }} por unidade
                       </div>
-                    </div>
-                    <div class="col-auto">
-                      <q-avatar size="45px" rounded>
-                        <img v-if="item.foto" :src="item.foto" alt="Foto do produto" />
-                        <q-icon v-else name="image" color="grey-5" />
-                      </q-avatar>
                     </div>
 
                     <div class="col-auto">

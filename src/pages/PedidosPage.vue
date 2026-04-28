@@ -601,14 +601,13 @@ function normalizarTexto(valor?: string): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-function valorParaCentavos(value: unknown): number {
+function textoMonetarioParaNumero(value: unknown): number | null {
   if (value === null || value === undefined || value === '') {
     return 0;
   }
 
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) return 0;
-    return Math.round(value * 100);
+    return Number.isFinite(value) ? value : null;
   }
 
   let texto = String(value).trim();
@@ -633,11 +632,27 @@ function valorParaCentavos(value: unknown): number {
 
   const numero = Number(texto);
 
-  if (!Number.isFinite(numero)) {
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function valorParaCentavos(value: unknown): number {
+  const numero = textoMonetarioParaNumero(value);
+
+  if (numero === null) {
     return 0;
   }
 
   return Math.round(numero * 100);
+}
+
+function valorPagamentoInvalido(value: unknown): boolean {
+  if (value === null || value === undefined || value === '') {
+    return false;
+  }
+
+  const numero = textoMonetarioParaNumero(value);
+
+  return numero === null || numero < 0;
 }
 
 function valorPositivoEmCentavos(value: unknown): number {
@@ -716,6 +731,30 @@ const totalSemTrocoCentavos = computed(() => {
     .reduce((acc, item) => acc + valorPositivoEmCentavos(item.valor), 0);
 });
 
+const totalSemTrocoAplicadoCentavos = computed(() => {
+  return Math.min(totalSemTrocoCentavos.value, totalPedidoCentavos.value);
+});
+
+const restanteParaDinheiroCentavos = computed(() => {
+  return Math.max(0, totalPedidoCentavos.value - totalSemTrocoAplicadoCentavos.value);
+});
+
+const totalDinheiroAplicadoCentavos = computed(() => {
+  return Math.min(totalEmDinheiroCentavos.value, restanteParaDinheiroCentavos.value);
+});
+
+const totalPagoConsideradoCentavos = computed(() => {
+  return totalSemTrocoAplicadoCentavos.value + totalDinheiroAplicadoCentavos.value;
+});
+
+const faltaPagarCentavos = computed(() => {
+  return Math.max(0, totalPedidoCentavos.value - totalPagoConsideradoCentavos.value);
+});
+
+const trocoCentavos = computed(() => {
+  return Math.max(0, totalEmDinheiroCentavos.value - restanteParaDinheiroCentavos.value);
+});
+
 const subtotalPedido = computed(() => {
   return centavosParaValor(subtotalPedidoCentavos.value);
 });
@@ -741,15 +780,15 @@ const totalEmDinheiro = computed(() => {
 });
 
 const totalPago = computed(() => {
-  return centavosParaValor(Math.min(totalInformadoCentavos.value, totalPedidoCentavos.value));
+  return centavosParaValor(totalPagoConsideradoCentavos.value);
 });
 
 const faltaPagar = computed(() => {
-  return centavosParaValor(Math.max(0, totalPedidoCentavos.value - totalInformadoCentavos.value));
+  return centavosParaValor(faltaPagarCentavos.value);
 });
 
 const troco = computed(() => {
-  return centavosParaValor(Math.max(0, totalInformadoCentavos.value - totalPedidoCentavos.value));
+  return centavosParaValor(trocoCentavos.value);
 });
 
 function obterPagamentosValidos() {
@@ -1240,15 +1279,55 @@ async function finalizarPedidoAberto() {
   await salvarPedido();
 }
 
-async function confirmarFaturamento() {
-  const possuiValorInvalido = pagamentos.value.some((item) => {
-    if (item.valor === null || item.valor === undefined || item.valor === '') {
+function validarPagamentosFaturamento(): boolean {
+  const pagamentosValidos = obterPagamentosValidos();
+
+  if (pagamentosValidos.length === 0) {
+    Notify.create({
+      type: 'warning',
+      message: 'Informe pelo menos uma forma de pagamento',
+    });
+    return false;
+  }
+
+  /**
+   * Mesma lógica usada no PDV:
+   * - Começa com o total do pedido como valor restante.
+   * - Percorre os pagamentos na ordem das linhas.
+   * - PIX e cartão não podem ser maiores que o restante.
+   * - Dinheiro pode ser maior que o restante, porque gera troco.
+   * - Cada pagamento aplicado reduz o restante.
+   */
+  let restanteCentavos = totalPedidoCentavos.value;
+
+  for (const item of pagamentosValidos) {
+    if (isFormaSemTroco(item.forma) && item.valorCentavos > restanteCentavos) {
+      Notify.create({
+        type: 'warning',
+        message: `O valor do ${getLabelFormaPagamento(item.forma)} não pode ser maior que o valor faltante de R$ ${centavosParaValor(
+          restanteCentavos,
+        ).toFixed(2)}.`,
+      });
       return false;
     }
 
-    const valor = Number(String(item.valor).replace(',', '.'));
-    return !Number.isFinite(valor) || valor < 0;
-  });
+    const valorAplicadoCentavos = Math.min(item.valorCentavos, restanteCentavos);
+    restanteCentavos = Math.max(0, restanteCentavos - valorAplicadoCentavos);
+  }
+
+  if (restanteCentavos > 0) {
+    Notify.create({
+      type: 'warning',
+      message: `Falta pagar R$ ${centavosParaValor(restanteCentavos).toFixed(2)}.`,
+    });
+    return false;
+  }
+
+  return true;
+}
+
+async function confirmarFaturamento() {
+  const possuiValorInvalido = pagamentos.value.some((item) => valorPagamentoInvalido(item.valor));
 
   if (possuiValorInvalido) {
     Notify.create({
@@ -1258,36 +1337,7 @@ async function confirmarFaturamento() {
     return;
   }
 
-  const pagamentosValidos = obterPagamentosValidos();
-
-  if (pagamentosValidos.length === 0) {
-    Notify.create({
-      type: 'warning',
-      message: 'Informe pelo menos uma forma de pagamento',
-    });
-    return;
-  }
-
-  let restanteCentavos = totalPedidoCentavos.value;
-
-  for (const item of pagamentosValidos) {
-    if (isFormaSemTroco(item.forma) && item.valorCentavos !== restanteCentavos) {
-      Notify.create({
-        type: 'warning',
-        message: `O valor do ${item.forma} deve ser exatamente o valor faltante de R$ ${centavosParaValor(restanteCentavos).toFixed(2)}.`,
-      });
-      return;
-    }
-
-    const valorAplicadoCentavos = Math.min(item.valorCentavos, restanteCentavos);
-    restanteCentavos = Math.max(0, restanteCentavos - valorAplicadoCentavos);
-  }
-
-  if (totalInformadoCentavos.value < totalPedidoCentavos.value) {
-    Notify.create({
-      type: 'warning',
-      message: 'O total pago é menor que o valor do pedido',
-    });
+  if (!validarPagamentosFaturamento()) {
     return;
   }
 
@@ -1315,26 +1365,7 @@ async function salvarPedidoComPagamento() {
     return;
   }
 
-  let restanteCentavos = totalPedidoCentavos.value;
-
-  for (const item of pagamentosPayloadCentavos) {
-    if (isFormaSemTroco(item.forma) && item.valorCentavos !== restanteCentavos) {
-      Notify.create({
-        type: 'warning',
-        message: `O valor do ${item.forma} deve ser exatamente o valor faltante de R$ ${centavosParaValor(restanteCentavos).toFixed(2)}.`,
-      });
-      return;
-    }
-
-    const valorAplicadoCentavos = Math.min(item.valorCentavos, restanteCentavos);
-    restanteCentavos = Math.max(0, restanteCentavos - valorAplicadoCentavos);
-  }
-
-  if (totalInformadoCentavos.value < totalPedidoCentavos.value) {
-    Notify.create({
-      type: 'warning',
-      message: 'O total pago é menor que o valor do pedido',
-    });
+  if (!validarPagamentosFaturamento()) {
     return;
   }
 
@@ -1356,12 +1387,8 @@ async function salvarPedidoComPagamento() {
   const descontoComprovante = centavosParaValor(descontoCalculadoCentavos.value);
   const acrescimoComprovante = centavosParaValor(acrescimoCalculadoCentavos.value);
   const totalComprovante = centavosParaValor(totalPedidoCentavos.value);
-  const totalPagoComprovante = centavosParaValor(
-    Math.min(totalInformadoCentavos.value, totalPedidoCentavos.value),
-  );
-  const trocoComprovante = centavosParaValor(
-    Math.max(0, totalInformadoCentavos.value - totalPedidoCentavos.value),
-  );
+  const totalPagoComprovante = centavosParaValor(totalPagoConsideradoCentavos.value);
+  const trocoComprovante = centavosParaValor(trocoCentavos.value);
   const dataPedidoComprovante = new Date();
 
   salvando.value = true;
@@ -1391,8 +1418,13 @@ async function salvarPedidoComPagamento() {
           : Number(acrescimoValor.value || 0),
 
       forma_pagamento: formaPagamentoResumo,
-      valor_recebido: totalPagoComprovante,
+
+      // Valor realmente informado pelo cliente, incluindo eventual excesso em dinheiro.
+      valor_recebido: centavosParaValor(totalInformadoCentavos.value),
+
+      // Troco calculado somente sobre dinheiro.
       troco: trocoComprovante,
+
       pagamentos: pagamentosPayload,
 
       itens: itens.value.map((item) => ({

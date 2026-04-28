@@ -512,11 +512,11 @@ const totalInformado = computed(() => {
 });
 
 const totalEmDinheiro = computed(() => {
-  const total = pagamentos.value
+  const totalDinheiroInformado = pagamentos.value
     .filter((item) => item.forma === 'DINHEIRO')
     .reduce((acc, item) => acc + (Number(item.valor) || 0), 0);
 
-  return round2(total);
+  return round2(Math.max(0, totalDinheiroInformado - troco.value));
 });
 
 const totalPago = computed(() => {
@@ -1071,6 +1071,19 @@ async function finalizarVenda() {
   const trocoComprovante = Number(troco.value || 0);
   const dataVendaComprovante = new Date();
 
+  const pagamentosFinanceiro: PagamentoInformado[] = pagamentosPayload
+    .map((item) => {
+      if (item.forma === 'DINHEIRO') {
+        return {
+          ...item,
+          valor: round2(Math.max(0, item.valor - trocoComprovante)),
+        };
+      }
+
+      return item;
+    })
+    .filter((item) => item.valor > 0);
+
   finalizando.value = true;
 
   try {
@@ -1093,7 +1106,7 @@ async function finalizarVenda() {
       forma_pagamento: formaPagamentoResumo,
       valor_recebido: totalPagoComprovante,
       troco: trocoComprovante,
-      pagamentos: pagamentosPayload,
+      pagamentos: pagamentosFinanceiro,
 
       itens: carrinho.value.map((item) => ({
         produto_id: item.produto_id,

@@ -1369,7 +1369,27 @@ async function salvarPedidoComPagamento() {
     return;
   }
 
-  const pagamentosPayload: PagamentoPedido[] = pagamentosPayloadCentavos.map((item) => ({
+  const trocoCalculadoCentavos = trocoCentavos.value;
+
+  const pagamentosComprovante: PagamentoPedido[] = pagamentosPayloadCentavos.map((item) => ({
+    forma: item.forma,
+    valor: centavosParaValor(item.valorCentavos),
+  }));
+
+  const pagamentosFinanceiroCentavos = pagamentosPayloadCentavos
+    .map((item) => {
+      if (item.forma === 'DINHEIRO') {
+        return {
+          ...item,
+          valorCentavos: Math.max(0, item.valorCentavos - trocoCalculadoCentavos),
+        };
+      }
+
+      return item;
+    })
+    .filter((item) => item.valorCentavos > 0);
+
+  const pagamentosPayload: PagamentoPedido[] = pagamentosFinanceiroCentavos.map((item) => ({
     forma: item.forma,
     valor: centavosParaValor(item.valorCentavos),
   }));
@@ -1380,7 +1400,6 @@ async function salvarPedidoComPagamento() {
     subtotal: calcularSubtotalItem(item.preco, item.quantidade),
   }));
 
-  const pagamentosComprovante = pagamentosPayload.map((item) => ({ ...item }));
   const clienteNomeComprovante = nomeClienteSelecionado.value || 'Não informado';
 
   const subtotalComprovante = centavosParaValor(subtotalPedidoCentavos.value);
@@ -1388,14 +1407,14 @@ async function salvarPedidoComPagamento() {
   const acrescimoComprovante = centavosParaValor(acrescimoCalculadoCentavos.value);
   const totalComprovante = centavosParaValor(totalPedidoCentavos.value);
   const totalPagoComprovante = centavosParaValor(totalPagoConsideradoCentavos.value);
-  const trocoComprovante = centavosParaValor(trocoCentavos.value);
+  const trocoComprovante = centavosParaValor(trocoCalculadoCentavos);
   const dataPedidoComprovante = new Date();
 
   salvando.value = true;
   finalizando.value = true;
 
   try {
-    const formaPagamentoResumo = obterFormaPagamentoResumo(pagamentosPayload);
+    const formaPagamentoResumo = obterFormaPagamentoResumo(pagamentosComprovante);
 
     const payload = {
       cliente_id: Number(clienteSelecionado.value),
@@ -1419,12 +1438,13 @@ async function salvarPedidoComPagamento() {
 
       forma_pagamento: formaPagamentoResumo,
 
-      // Valor realmente informado pelo cliente, incluindo eventual excesso em dinheiro.
+      // Valor bruto informado pelo cliente.
       valor_recebido: centavosParaValor(totalInformadoCentavos.value),
 
-      // Troco calculado somente sobre dinheiro.
+      // Troco devolvido ao cliente.
       troco: trocoComprovante,
 
+      // Valores líquidos para financeiro.
       pagamentos: pagamentosPayload,
 
       itens: itens.value.map((item) => ({

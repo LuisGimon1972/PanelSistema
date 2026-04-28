@@ -61,6 +61,7 @@
           row-key="id"
           :loading="loading"
           no-data-label="Nenhum pedido encontrado"
+         :pagination="{ rowsPerPage: 10 }"
         >
           <template #body-cell-data="props">
             <q-td :props="props">

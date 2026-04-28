@@ -59,6 +59,7 @@
       bordered
       class="border grade-azul"
       no-data-label="Nenhum produto encontrado"
+     :pagination="{ rowsPerPage: 10 }"
     >
       <template v-slot:body-cell-foto="props">
         <q-td>

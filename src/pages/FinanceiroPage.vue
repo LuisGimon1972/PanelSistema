@@ -158,6 +158,7 @@
           row-key="id"
           :loading="loading"
           no-data-label="Nenhuma entrada encontrada"
+          :pagination="{ rowsPerPage: 10 }"
         >
           <template #body-cell-data="props">
             <q-td :props="props">

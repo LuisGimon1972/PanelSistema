@@ -46,6 +46,7 @@
       bordered
       class="border grade-azul"
       no-data-label="Nenhum cliente encontrado"
+      :pagination="{ rowsPerPage: 10 }"
     >
       <template v-slot:body-cell-acoes="props">
         <q-td>

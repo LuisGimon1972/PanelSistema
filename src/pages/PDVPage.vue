@@ -281,73 +281,101 @@
                   <div class="text-h6">Faturamento</div>
                 </q-card-section>
 
-                <q-card-section>
-                  <div
-                    v-for="(pagamento, index) in pagamentos"
-                    :key="pagamento.forma"
-                    class="row items-center q-col-gutter-sm q-mb-sm"
-                  >
-                    <div class="col-4">
-                      <div class="text-subtitle2">
-                        {{ pagamento.label }}
-                      </div>
-                    </div>
+<q-card-section>
+  <div
+    v-for="(pagamento, index) in pagamentos"
+    :key="pagamento.forma"
+    class="row items-center q-col-gutter-sm q-mb-sm"
+  >
+    <div class="col-4">
+      <div class="text-subtitle2">
+        {{ pagamento.label }}
+      </div>
+    </div>
 
-                    <div class="col-8">
-                      <q-input
-                        :ref="criarPagamentoRef(index)"
-                        v-model.number="pagamento.valor"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        outlined
-                        dense
-                        class="sem-setas"
-                        input-class="text-right"
-                        placeholder="0,00"
-                        :label="`Valor em ${pagamento.label}`"
-                      >
-                        <template #prepend>
-                          <span class="text-blue-7 text-caption">R$</span>
-                        </template>
-                      </q-input>
-                    </div>
-                  </div>
+    <div class="col-8">
+      <q-input
+        :ref="criarPagamentoRef(index)"
+        v-model.number="pagamento.valor"
+        type="number"
+        min="0"
+        step="0.01"
+        outlined
+        dense
+        class="sem-setas"
+        input-class="text-right"
+        placeholder="0,00"
+        :label="`Valor em ${pagamento.label}`"
+      >
+        <template #prepend>
+          <span class="text-blue-7 text-caption">R$</span>
+        </template>
+      </q-input>
+    </div>
+  </div>
 
-                  <q-separator class="q-my-md" />
+  <div v-if="mostrarQrCodePix" class="q-mt-md text-center">
+    <div class="text-subtitle2 q-mb-sm">
+      Pagamento via PIX
+    </div>
 
-                  <div class="row justify-between q-mb-sm">
-                    <span class="text-grey-7">Total</span>
-                    <strong class="text-primary text-h6">
-                      {{ formatarMoeda(totalVenda) }}
-                    </strong>
-                  </div>
+    <div class="text-body2 q-mb-sm">
+      Valor do PIX: {{ formatarMoeda(valorPixInformado) }}
+    </div>
 
-                  <div class="row justify-between q-mb-sm">
-                    <span class="text-grey-7">Total pago</span>
-                    <strong>{{ formatarMoeda(totalPago) }}</strong>
-                  </div>
+    <q-img
+      :src="qrcodePix"
+      style="width: 220px; height: 220px; margin: 0 auto"
+      fit="contain"
+    />
 
-                  <div class="row justify-between q-mb-sm">
-                    <span class="text-grey-7">Falta pagar</span>
-                    <strong class="text-negative">
-                      {{ formatarMoeda(faltaPagar) }}
-                    </strong>
-                  </div>
+    <div class="text-caption text-grey-7 q-mt-sm">
+      Escaneie o QR Code para realizar o pagamento
+    </div>
+  </div>
 
-                  <div class="row justify-between q-mb-md">
-                    <span class="text-grey-7">Troco</span>
-                    <strong class="text-positive text-h6">
-                      {{ formatarMoeda(troco) }}
-                    </strong>
-                  </div>
+  <div
+    v-else-if="pixComValorDiferenteDoEsperado"
+    class="q-mt-md text-center text-warning"
+  >
+    O valor do PIX deve ser exatamente
+    {{ formatarMoeda(valorEsperadoPix) }}.
+  </div>
 
-                  <q-checkbox
-                    v-model="imprimirComprovanteAutomaticamente"
-                    dense
-                    label="Imprimir comprovante após concluir"
-                  />
-                </q-card-section>
+  <q-separator class="q-my-md" />
+
+  <div class="row justify-between q-mb-sm">
+    <span class="text-grey-7">Total</span>
+    <strong class="text-primary text-h6">
+      {{ formatarMoeda(totalVenda) }}
+    </strong>
+  </div>
+
+  <div class="row justify-between q-mb-sm">
+    <span class="text-grey-7">Total pago</span>
+    <strong>{{ formatarMoeda(totalPago) }}</strong>
+  </div>
+
+  <div class="row justify-between q-mb-sm">
+    <span class="text-grey-7">Falta pagar</span>
+    <strong class="text-negative">
+      {{ formatarMoeda(faltaPagar) }}
+    </strong>
+  </div>
+
+  <div class="row justify-between q-mb-md">
+    <span class="text-grey-7">Troco</span>
+    <strong class="text-positive text-h6">
+      {{ formatarMoeda(troco) }}
+    </strong>
+  </div>
+
+  <q-checkbox
+    v-model="imprimirComprovanteAutomaticamente"
+    dense
+    label="Imprimir comprovante após concluir"
+  />
+</q-card-section>
 
                 <q-card-actions align="right">
                   <q-btn flat label="Cancelar" v-close-popup />
@@ -373,6 +401,40 @@ import { computed, nextTick, onMounted, ref, watch, type ComponentPublicInstance
 import { Notify, QInput } from 'quasar';
 import { api } from 'boot/axios';
 import axios from 'axios';
+import qrcodePix from 'src/assets/qrcode.jpg';
+
+const valorPixInformado = computed(() => {
+  const pagamentoPix = pagamentos.value.find((item) => item.forma === 'PIX');
+  return round2(Number(pagamentoPix?.valor || 0));
+});
+
+const totalOutrasFormasSemPix = computed(() => {
+  const total = pagamentos.value
+    .filter((item) => item.forma !== 'PIX')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
+
+  return round2(total);
+});
+
+const valorEsperadoPix = computed(() => {
+  return round2(Math.max(0, totalVenda.value - totalOutrasFormasSemPix.value));
+});
+
+const pixFoiInformado = computed(() => {
+  return valorPixInformado.value > 0;
+});
+
+const mostrarQrCodePix = computed(() => {
+  if (!pixFoiInformado.value) return false;
+
+  return valorPixInformado.value === valorEsperadoPix.value;
+});
+
+const pixComValorDiferenteDoEsperado = computed(() => {
+  if (!pixFoiInformado.value) return false;
+
+  return valorPixInformado.value !== valorEsperadoPix.value;
+});
 
 const API_URL = 'http://localhost:3000';
 

@@ -340,6 +340,27 @@
               </q-input>
             </div>
           </div>
+          <div v-if="mostrarQrCodePix" class="q-mt-md text-center">
+            <div class="text-subtitle2 q-mb-sm">Pagamento via PIX</div>
+
+            <div class="text-body2 q-mb-sm">
+              Valor do PIX: {{ formatarMoeda(valorPixInformado) }}
+            </div>
+
+            <q-btn
+              class="border"
+              color="primary"
+              icon="qr_code_2"
+              label="Abrir QR Code PIX"
+              unelevated
+              @click="dialogQrPix = true"
+            />
+          </div>
+
+          <div v-else-if="pixComValorDiferenteDoEsperado" class="q-mt-md text-center text-warning">
+            O valor do PIX deve ser exatamente
+            {{ formatarMoeda(valorEsperadoPix) }}.
+          </div>
 
           <q-separator class="q-my-md" />
 
@@ -388,6 +409,29 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="dialogQrPix">
+      <q-card class="border" style="width: 320px; max-width: 90vw">
+        <q-card-section class="text-center">
+          <div class="text-h6 q-mb-sm">Pagamento via PIX</div>
+
+          <div class="text-subtitle2 q-mb-md">Valor: {{ formatarMoeda(valorPixInformado) }}</div>
+
+          <q-img
+            :src="qrcodePix"
+            style="width: 240px; height: 240px; margin: 0 auto"
+            fit="contain"
+          />
+
+          <div class="text-caption text-grey-7 q-mt-md">
+            Escaneie o QR Code para realizar o pagamento
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat color="primary" icon="close" label="Cerrar" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -397,6 +441,10 @@ import { Notify, QInput } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';
 import axios from 'axios';
+import qrcodePix from 'src/assets/qrcode.jpg';
+
+const modalFaturar = ref(false);
+const dialogQrPix = ref(false);
 
 const route = useRoute();
 const router = useRouter();
@@ -525,7 +573,6 @@ const descontoValor = ref<number>(0);
 const acrescimoTipo = ref<TipoAjuste>('valor');
 const acrescimoValor = ref<number>(0);
 
-const modalFaturar = ref(false);
 const imprimirComprovanteAutomaticamente = ref(true);
 
 const pagamentoRefs = ref<Array<InstanceType<typeof QInput> | null>>([]);
@@ -618,10 +665,8 @@ function textoMonetarioParaNumero(value: unknown): number | null {
   if (temVirgula && temPonto) {
     texto = texto.replace(/\./g, '').replace(',', '.');
   } else if (temVirgula) {
-
     texto = texto.replace(',', '.');
   } else if (temPonto && /^\d{1,3}(\.\d{3})+$/.test(texto)) {
-
     texto = texto.replace(/\./g, '');
   }
 
@@ -764,6 +809,43 @@ const acrescimoCalculado = computed(() => {
 
 const totalPedido = computed(() => {
   return centavosParaValor(totalPedidoCentavos.value);
+});
+
+const valorPixInformadoCentavos = computed(() => {
+  const pagamentoPix = pagamentos.value.find((item) => item.forma === 'PIX');
+  return valorPositivoEmCentavos(pagamentoPix?.valor);
+});
+
+const totalOutrasFormasSemPixCentavos = computed(() => {
+  return pagamentos.value
+    .filter((item) => item.forma !== 'PIX')
+    .reduce((acc, item) => acc + valorPositivoEmCentavos(item.valor), 0);
+});
+
+const valorEsperadoPixCentavos = computed(() => {
+  return Math.max(0, totalPedidoCentavos.value - totalOutrasFormasSemPixCentavos.value);
+});
+
+const valorPixInformado = computed(() => {
+  return centavosParaValor(valorPixInformadoCentavos.value);
+});
+
+const valorEsperadoPix = computed(() => {
+  return centavosParaValor(valorEsperadoPixCentavos.value);
+});
+
+const pixFoiInformado = computed(() => {
+  return valorPixInformadoCentavos.value > 0;
+});
+
+const mostrarQrCodePix = computed(() => {
+  if (!pixFoiInformado.value) return false;
+  return valorPixInformadoCentavos.value === valorEsperadoPixCentavos.value;
+});
+
+const pixComValorDiferenteDoEsperado = computed(() => {
+  if (!pixFoiInformado.value) return false;
+  return valorPixInformadoCentavos.value !== valorEsperadoPixCentavos.value;
 });
 
 const totalInformado = computed(() => {
@@ -1425,12 +1507,9 @@ async function salvarPedidoComPagamento() {
 
       forma_pagamento: formaPagamentoResumo,
 
-
       valor_recebido: centavosParaValor(totalInformadoCentavos.value),
 
-
       troco: trocoComprovante,
-
 
       pagamentos: pagamentosPayload,
 

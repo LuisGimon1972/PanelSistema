@@ -121,7 +121,14 @@
               outlined
             />
             <q-input v-model="form.nome" label="Nome" dense outlined />
-            <q-input v-model="form.categoria" label="Categoria" dense outlined />
+            <q-select
+              v-model="form.categoria"
+              :options="categoriasOptions"
+              label="Categoria"
+              dense
+              outlined
+              clearable
+            />
             <q-input
               v-model.number="form.preco"
               label="Preço"
@@ -292,11 +299,21 @@ const filtroBusca = ref<string>('');
 const filtroCategoria = ref<string>('');
 
 const categoriasOptions = ref<string[]>([
-  'Eletrônicos',
-  'Roupas',
   'Alimentos',
   'Bebidas',
-  'Limpieza',
+  'Limpeza',
+  'Higiene',
+  'Eletrônicos',
+  'Roupas',
+  'Calçados',
+  'Acessórios',
+  'Casa e Cozinha',
+  'Papelaria',
+  'Ferramentas',
+  'Brinquedos',
+  'Pet Shop',
+  'Farmácia',
+  'Outros',
 ]);
 
 const columns: QTableProps['columns'] = [

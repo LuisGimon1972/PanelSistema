@@ -318,7 +318,7 @@
                     <div class="text-subtitle2 q-mb-sm">Pagamento via PIX</div>
 
                     <div class="text-body2 q-mb-sm">
-                      Valor do PIX: {{ formatarMoeda(valorPixInformado) }}
+                      Valor do PIX: {{ formatarMoeda(valorPixInformado) }}                      
                     </div>
 
                     <q-btn
@@ -327,7 +327,7 @@
                       icon="qr_code_2"
                       label="Abrir QR Code PIX"
                       unelevated
-                      @click="dialogQrPix = true"
+                      @click="abrirQrCodePix"
                     />
                   </div>
 
@@ -381,7 +381,8 @@
                     icon="check"
                     label="Confirmar"
                     :loading="finalizando"
-                    @click="finalizarVenda"
+                    :disable="!podeConfirmarFaturamento"
+                    @click="confirmarFaturamento"
                   />
                 </q-card-actions>
               </q-card>
@@ -427,6 +428,7 @@ import qrcodePix from 'src/assets/qrcode.jpg';
 
 const modalFaturar = ref(false);
 const dialogQrPix = ref(false);
+const qrPixLiberado = ref(false);
 
 const API_URL = 'http://localhost:3000';
 
@@ -538,10 +540,13 @@ function criarPagamentoRef(index: number) {
   };
 }
 
+
+
 watch(modalFaturar, async (abriu) => {
   if (!abriu) {
     pagamentoRefs.value = [];
     dialogQrPix.value = false;
+    qrPixLiberado.value = false;
     return;
   }
 
@@ -553,6 +558,8 @@ watch(modalFaturar, async (abriu) => {
 });
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const valorParaCentavos = (value: number) => Math.round(Number(value || 0) * 100);
 
 const isFormaSemTroco = (forma?: string) =>
   ['PIX', 'CARTAO', 'CARTÃO'].includes((forma || '').toUpperCase());
@@ -650,16 +657,37 @@ const valorEsperadoPix = computed(() => {
   return round2(Math.max(0, totalVenda.value - totalOutrasFormasSemPix.value));
 });
 
-const pixFoiInformado = computed(() => valorPixInformado.value > 0);
+const valorPixInformadoCentavos = computed(() => valorParaCentavos(valorPixInformado.value));
+
+const valorEsperadoPixCentavos = computed(() => valorParaCentavos(valorEsperadoPix.value));
+
+const pixFoiInformado = computed(() => valorPixInformadoCentavos.value > 0);
 
 const mostrarQrCodePix = computed(() => {
   if (!pixFoiInformado.value) return false;
-  return valorPixInformado.value === valorEsperadoPix.value;
+  return valorPixInformadoCentavos.value === valorEsperadoPixCentavos.value;
 });
 
 const pixComValorDiferenteDoEsperado = computed(() => {
   if (!pixFoiInformado.value) return false;
-  return valorPixInformado.value !== valorEsperadoPix.value;
+  return valorPixInformadoCentavos.value !== valorEsperadoPixCentavos.value;
+});
+
+const podeConfirmarFaturamento = computed(() => {
+  return !mostrarQrCodePix.value || qrPixLiberado.value;
+});
+
+function abrirQrCodePix() {
+  qrPixLiberado.value = true;
+  dialogQrPix.value = true;
+}
+
+watch([valorPixInformadoCentavos, valorEsperadoPixCentavos], () => {
+  qrPixLiberado.value = false;
+
+  if (!mostrarQrCodePix.value) {
+    dialogQrPix.value = false;
+  }
 });
 
 function formatarMoeda(valor: number): string {
@@ -1086,6 +1114,12 @@ function diminuirQuantidade(produtoId: number) {
 
 function removerItem(produtoId: number) {
   carrinho.value = carrinho.value.filter((item) => item.produto_id !== produtoId);
+}
+
+async function confirmarFaturamento() {
+  if (!podeConfirmarFaturamento.value) return;
+
+  await finalizarVenda();
 }
 
 async function finalizarVenda() {

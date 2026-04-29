@@ -353,7 +353,7 @@
               icon="qr_code_2"
               label="Abrir QR Code PIX"
               unelevated
-              @click="dialogQrPix = true"
+              @click="abrirQrCodePix"
             />
           </div>
 
@@ -404,7 +404,8 @@
             icon="check"
             label="Confirmar"
             :loading="salvando"
-            @click="salvarPedidoComPagamento"
+            :disable="!podeConfirmarFaturamento"
+            @click="confirmarFaturamento"
           />
         </q-card-actions>
       </q-card>
@@ -445,6 +446,7 @@ import qrcodePix from 'src/assets/qrcode.jpg';
 
 const modalFaturar = ref(false);
 const dialogQrPix = ref(false);
+const qrPixLiberado = ref(false);
 
 const route = useRoute();
 const router = useRouter();
@@ -589,6 +591,8 @@ function criarPagamentoRef(index: number) {
 watch(modalFaturar, async (abriu) => {
   if (!abriu) {
     pagamentoRefs.value = [];
+    dialogQrPix.value = false;
+    qrPixLiberado.value = false;
     return;
   }
 
@@ -843,9 +847,26 @@ const mostrarQrCodePix = computed(() => {
   return valorPixInformadoCentavos.value === valorEsperadoPixCentavos.value;
 });
 
+const podeConfirmarFaturamento = computed(() => {
+  return !mostrarQrCodePix.value || qrPixLiberado.value;
+});
+
+function abrirQrCodePix() {
+  qrPixLiberado.value = true;
+  dialogQrPix.value = true;
+}
+
 const pixComValorDiferenteDoEsperado = computed(() => {
   if (!pixFoiInformado.value) return false;
   return valorPixInformadoCentavos.value !== valorEsperadoPixCentavos.value;
+});
+
+watch([valorPixInformadoCentavos, valorEsperadoPixCentavos], () => {
+  qrPixLiberado.value = false;
+
+  if (!mostrarQrCodePix.value) {
+    dialogQrPix.value = false;
+  }
 });
 
 const totalInformado = computed(() => {

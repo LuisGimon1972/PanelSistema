@@ -43,7 +43,7 @@
               v-model="busca"
               outlined
               dense
-              label="Buscar produto ou código de barras"
+              label="Buscar produto, pelo nome, id ou código de barras"
               @keyup.enter="buscarOuAdicionarProduto"
             >
               <template #prepend>
@@ -318,7 +318,7 @@
                     <div class="text-subtitle2 q-mb-sm">Pagamento via PIX</div>
 
                     <div class="text-body2 q-mb-sm">
-                      Valor do PIX: {{ formatarMoeda(valorPixInformado) }}                      
+                      Valor do PIX: {{ formatarMoeda(valorPixInformado) }}
                     </div>
 
                     <q-btn
@@ -453,6 +453,7 @@ interface Produto {
   estoque: number;
   status?: string;
   foto: string;
+  codigo_barras?: string;
 }
 
 interface OptionItem {
@@ -540,8 +541,6 @@ function criarPagamentoRef(index: number) {
   };
 }
 
-
-
 watch(modalFaturar, async (abriu) => {
   if (!abriu) {
     pagamentoRefs.value = [];
@@ -611,8 +610,16 @@ const produtosFiltrados = computed(() => {
 
   return produtos.value.filter((produto) => {
     const ativo = produto.status !== 'INATIVO';
-    const combinaBusca = produto.nome.toLowerCase().includes(termo);
-    return ativo && combinaBusca;
+
+    if (!termo) {
+      return ativo;
+    }
+
+    const buscaPorNome = produto.nome.toLowerCase().includes(termo);
+    const buscaPorId = String(produto.id).includes(termo);
+    const buscaPorCodigoBarras = String(produto.codigo_barras || '').includes(termo);
+
+    return ativo && (buscaPorNome || buscaPorId || buscaPorCodigoBarras);
   });
 });
 

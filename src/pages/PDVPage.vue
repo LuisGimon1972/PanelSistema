@@ -336,8 +336,8 @@
                     v-else-if="pixComValorDiferenteDoEsperado"
                     class="q-mt-md text-center text-warning"
                   >
-                    O valor do PIX deve ser exatamente
-                    {{ formatarMoeda(valorEsperadoPix) }}.
+                    O valor do PIX não pode ser maior que
+                    {{ formatarMoeda(valorMaximoPix) }}.
                   </div>
 
                   <q-separator class="q-my-md" />
@@ -689,33 +689,39 @@ const valorPixInformado = computed(() => {
 
 const totalOutrasFormasSemPix = computed(() => {
   const total = pagamentos.value
-    .filter((item) => item.forma !== 'PIX')
+    .filter((item) => item.forma !== 'PIX' && item.forma !== 'DINHEIRO')
     .reduce((acc, item) => acc + Number(item.valor || 0), 0);
 
   return round2(total);
 });
 
-const valorEsperadoPix = computed(() => {
+const valorMaximoPix = computed(() => {
   return round2(Math.max(0, totalVenda.value - totalOutrasFormasSemPix.value));
 });
 
 const valorPixInformadoCentavos = computed(() => valorParaCentavos(valorPixInformado.value));
 
-const valorEsperadoPixCentavos = computed(() => valorParaCentavos(valorEsperadoPix.value));
+const valorMaximoPixCentavos = computed(() => valorParaCentavos(valorMaximoPix.value));
 
 const pixFoiInformado = computed(() => valorPixInformadoCentavos.value > 0);
 
+const pixDentroDoLimite = computed(() => {
+  if (!pixFoiInformado.value) return true;
+  return valorPixInformadoCentavos.value <= valorMaximoPixCentavos.value;
+});
+
 const mostrarQrCodePix = computed(() => {
-  if (!pixFoiInformado.value) return false;
-  return valorPixInformadoCentavos.value === valorEsperadoPixCentavos.value;
+  return pixFoiInformado.value && pixDentroDoLimite.value;
 });
 
 const pixComValorDiferenteDoEsperado = computed(() => {
   if (!pixFoiInformado.value) return false;
-  return valorPixInformadoCentavos.value !== valorEsperadoPixCentavos.value;
+  return !pixDentroDoLimite.value;
 });
 
 const podeConfirmarFaturamento = computed(() => {
+  if (pixComValorDiferenteDoEsperado.value) return false;
+
   return !mostrarQrCodePix.value || qrPixLiberado.value;
 });
 
@@ -724,7 +730,7 @@ function abrirQrCodePix() {
   dialogQrPix.value = true;
 }
 
-watch([valorPixInformadoCentavos, valorEsperadoPixCentavos], () => {
+watch([valorPixInformadoCentavos, valorMaximoPixCentavos], () => {
   qrPixLiberado.value = false;
 
   if (!mostrarQrCodePix.value) {
@@ -1198,8 +1204,10 @@ async function finalizarVenda() {
 
   let restante = round2(totalVenda.value);
 
-  for (const item of pagamentosPayload) {
-    if (isFormaSemTroco(item.forma) && item.valor > restante) {
+  const pagamentosSemTroco = pagamentosPayload.filter((item) => isFormaSemTroco(item.forma));
+
+  for (const item of pagamentosSemTroco) {
+    if (item.valor > restante) {
       Notify.create({
         type: 'warning',
         message: `O valor do ${item.forma} não pode ser maior que o valor faltante de R$ ${restante.toFixed(2)}.`,
@@ -1207,8 +1215,19 @@ async function finalizarVenda() {
       return;
     }
 
-    const valorAplicado = round2(Math.min(item.valor, restante));
-    restante = round2(Math.max(0, restante - valorAplicado));
+    restante = round2(Math.max(0, restante - item.valor));
+  }
+
+  const totalDinheiroInformado = pagamentosPayload
+    .filter((item) => item.forma === 'DINHEIRO')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
+
+  if (round2(totalDinheiroInformado) < restante) {
+    Notify.create({
+      type: 'warning',
+      message: 'O total pago é menor que o total da venda',
+    });
+    return;
   }
 
   if (faltaPagar.value > 0) {
@@ -1218,7 +1237,6 @@ async function finalizarVenda() {
     });
     return;
   }
-
   const itensComprovante = carrinho.value.map((item) => ({ ...item }));
   const pagamentosComprovante = pagamentosPayload.map((item) => ({ ...item }));
   const clienteNomeComprovante = nomeClienteFinal.value;

@@ -333,6 +333,7 @@
                 input-class="text-right"
                 placeholder="0,00"
                 :label="`Valor em ${pagamento.label}`"
+                :disable="deveDesabilitarFormaPagamento(pagamento.forma)"
               >
                 <template #prepend>
                   <span class="text-blue-7 text-caption">R$</span>
@@ -768,6 +769,34 @@ const totalEmDinheiroCentavos = computed(() => {
   return pagamentos.value
     .filter((item) => item.forma === 'DINHEIRO')
     .reduce((acc, item) => acc + valorPositivoEmCentavos(item.valor), 0);
+});
+
+const dinheiroCobreTotalPedido = computed(() => {
+  return (
+    totalPedidoCentavos.value > 0 && totalEmDinheiroCentavos.value >= totalPedidoCentavos.value
+  );
+});
+
+function deveDesabilitarFormaPagamento(forma: FormaPagamento): boolean {
+  return forma !== 'DINHEIRO' && dinheiroCobreTotalPedido.value;
+}
+
+watch(dinheiroCobreTotalPedido, (cobreTotal) => {
+  if (!cobreTotal) return;
+
+  pagamentos.value = pagamentos.value.map((item) => {
+    if (item.forma === 'DINHEIRO') {
+      return item;
+    }
+
+    return {
+      ...item,
+      valor: null,
+    };
+  });
+
+  qrPixLiberado.value = false;
+  dialogQrPix.value = false;
 });
 
 const totalSemTrocoCentavos = computed(() => {

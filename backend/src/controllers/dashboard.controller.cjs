@@ -29,7 +29,7 @@ async function getDashboard(req, res) {
     const estoqueBaixo = await pool.query(`
       SELECT COUNT(*)::int AS total
       FROM produtos
-      WHERE estoque > 0 AND estoque <= 5
+      WHERE estoque >= 0 AND estoque <= 5
     `);
 
     const ultimosClientes = await pool.query(`

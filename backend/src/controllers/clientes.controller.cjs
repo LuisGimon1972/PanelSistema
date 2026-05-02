@@ -17,7 +17,7 @@ async function listarClientes(req, res) {
       sql += ` AND status = $${params.length}`;
     }
 
-    sql += ' ORDER BY id DESC';
+    sql += ' ORDER BY documento DESC';
 
     const { rows } = await pool.query(sql, params);
     res.json(rows);

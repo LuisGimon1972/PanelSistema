@@ -359,8 +359,8 @@
           </div>
 
           <div v-else-if="pixComValorDiferenteDoEsperado" class="q-mt-md text-center text-warning">
-            O valor do PIX deve ser exatamente
-            {{ formatarMoeda(valorEsperadoPix) }}.
+            O valor do PIX não pode ser maior que
+            {{ formatarMoeda(valorMaximoPix) }}.
           </div>
 
           <q-separator class="q-my-md" />
@@ -852,11 +852,11 @@ const valorPixInformadoCentavos = computed(() => {
 
 const totalOutrasFormasSemPixCentavos = computed(() => {
   return pagamentos.value
-    .filter((item) => item.forma !== 'PIX')
+    .filter((item) => item.forma !== 'PIX' && item.forma !== 'DINHEIRO')
     .reduce((acc, item) => acc + valorPositivoEmCentavos(item.valor), 0);
 });
 
-const valorEsperadoPixCentavos = computed(() => {
+const valorMaximoPixCentavos = computed(() => {
   return Math.max(0, totalPedidoCentavos.value - totalOutrasFormasSemPixCentavos.value);
 });
 
@@ -864,20 +864,31 @@ const valorPixInformado = computed(() => {
   return centavosParaValor(valorPixInformadoCentavos.value);
 });
 
-const valorEsperadoPix = computed(() => {
-  return centavosParaValor(valorEsperadoPixCentavos.value);
+const valorMaximoPix = computed(() => {
+  return centavosParaValor(valorMaximoPixCentavos.value);
 });
 
 const pixFoiInformado = computed(() => {
   return valorPixInformadoCentavos.value > 0;
 });
 
+const pixDentroDoLimite = computed(() => {
+  if (!pixFoiInformado.value) return true;
+  return valorPixInformadoCentavos.value <= valorMaximoPixCentavos.value;
+});
+
 const mostrarQrCodePix = computed(() => {
+  return pixFoiInformado.value && pixDentroDoLimite.value;
+});
+
+const pixComValorDiferenteDoEsperado = computed(() => {
   if (!pixFoiInformado.value) return false;
-  return valorPixInformadoCentavos.value === valorEsperadoPixCentavos.value;
+  return !pixDentroDoLimite.value;
 });
 
 const podeConfirmarFaturamento = computed(() => {
+  if (pixComValorDiferenteDoEsperado.value) return false;
+
   return !mostrarQrCodePix.value || qrPixLiberado.value;
 });
 
@@ -886,12 +897,7 @@ function abrirQrCodePix() {
   dialogQrPix.value = true;
 }
 
-const pixComValorDiferenteDoEsperado = computed(() => {
-  if (!pixFoiInformado.value) return false;
-  return valorPixInformadoCentavos.value !== valorEsperadoPixCentavos.value;
-});
-
-watch([valorPixInformadoCentavos, valorEsperadoPixCentavos], () => {
+watch([valorPixInformadoCentavos, valorMaximoPixCentavos], () => {
   qrPixLiberado.value = false;
 
   if (!mostrarQrCodePix.value) {
@@ -1426,8 +1432,10 @@ function validarPagamentosFaturamento(): boolean {
 
   let restanteCentavos = totalPedidoCentavos.value;
 
-  for (const item of pagamentosValidos) {
-    if (isFormaSemTroco(item.forma) && item.valorCentavos > restanteCentavos) {
+  const pagamentosSemTroco = pagamentosValidos.filter((item) => isFormaSemTroco(item.forma));
+
+  for (const item of pagamentosSemTroco) {
+    if (item.valorCentavos > restanteCentavos) {
       Notify.create({
         type: 'warning',
         message: `O valor do ${getLabelFormaPagamento(item.forma)} não pode ser maior que o valor faltante de R$ ${centavosParaValor(
@@ -1437,14 +1445,19 @@ function validarPagamentosFaturamento(): boolean {
       return false;
     }
 
-    const valorAplicadoCentavos = Math.min(item.valorCentavos, restanteCentavos);
-    restanteCentavos = Math.max(0, restanteCentavos - valorAplicadoCentavos);
+    restanteCentavos = Math.max(0, restanteCentavos - item.valorCentavos);
   }
 
-  if (restanteCentavos > 0) {
+  const totalDinheiroInformadoCentavos = pagamentosValidos
+    .filter((item) => item.forma === 'DINHEIRO')
+    .reduce((acc, item) => acc + item.valorCentavos, 0);
+
+  if (totalDinheiroInformadoCentavos < restanteCentavos) {
     Notify.create({
       type: 'warning',
-      message: `Falta pagar R$ ${centavosParaValor(restanteCentavos).toFixed(2)}.`,
+      message: `Falta pagar R$ ${centavosParaValor(
+        restanteCentavos - totalDinheiroInformadoCentavos,
+      ).toFixed(2)}.`,
     });
     return false;
   }

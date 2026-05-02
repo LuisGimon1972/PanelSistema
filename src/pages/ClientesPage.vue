@@ -49,7 +49,7 @@
       :pagination="{ rowsPerPage: 10 }"
     >
       <template v-slot:body-cell-acoes="props">
-        <q-td>
+        <q-td :props="props" class="text-center">
           <q-btn
             v-if="props.row.status === 'ATIVO' && !isConsumidorFinal(props.row)"
             icon="edit"
@@ -204,7 +204,7 @@ const columns: QTableProps['columns'] = [
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
   { name: 'telefone', label: 'Telefone', field: 'telefone', align: 'left' },
   { name: 'cidade', label: 'Cidade', field: 'cidade', align: 'left' },
-  { name: 'acoes', label: 'Ações', field: 'acoes', align: 'left' },
+  { name: 'acoes', label: 'Ações', field: 'acoes', align: 'center' },
 ];
 
 // carregar lista

@@ -59,7 +59,7 @@
       bordered
       class="border grade-azul"
       no-data-label="Nenhum produto encontrado"
-     :pagination="{ rowsPerPage: 10 }"
+      :pagination="{ rowsPerPage: 10 }"
     >
       <template v-slot:body-cell-foto="props">
         <q-td>
@@ -71,7 +71,7 @@
       </template>
 
       <template v-slot:body-cell-acoes="props">
-        <q-td>
+        <q-td :props="props" class="text-center">
           <q-btn
             v-if="props.row.status === 'ATIVO'"
             icon="edit"
@@ -330,7 +330,7 @@ const columns: QTableProps['columns'] = [
     format: (val: number | string) => `R$ ${Number(val).toFixed(2)}`,
   },
   { name: 'estoque', label: 'Estoque', field: 'estoque', align: 'right' },
-  { name: 'acoes', label: 'Ações', field: 'acoes', align: 'left' },
+  { name: 'acoes', label: 'Ações', field: 'acoes', align: 'center' },
 ];
 
 watch(fotoArquivo, (file) => {

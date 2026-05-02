@@ -306,6 +306,7 @@
                         input-class="text-right"
                         placeholder="0,00"
                         :label="`Valor em ${pagamento.label}`"
+                        :disable="deveDesabilitarFormaPagamento(pagamento.forma)"
                       >
                         <template #prepend>
                           <span class="text-blue-7 text-caption">R$</span>
@@ -646,6 +647,40 @@ const acrescimoCalculado = computed(() => {
 const totalVenda = computed(() =>
   Math.max(0, subtotalVenda.value - descontoCalculado.value + acrescimoCalculado.value),
 );
+
+const valorDinheiroInformado = computed(() => {
+  const pagamentoDinheiro = pagamentos.value.find((item) => item.forma === 'DINHEIRO');
+  return round2(Number(pagamentoDinheiro?.valor || 0));
+});
+
+const totalVendaCentavos = computed(() => valorParaCentavos(totalVenda.value));
+
+const valorDinheiroInformadoCentavos = computed(() =>
+  valorParaCentavos(valorDinheiroInformado.value),
+);
+
+const dinheiroCobreTotalVenda = computed(() => {
+  return (
+    totalVendaCentavos.value > 0 && valorDinheiroInformadoCentavos.value >= totalVendaCentavos.value
+  );
+});
+
+function deveDesabilitarFormaPagamento(forma: FormaPagamento) {
+  return forma !== 'DINHEIRO' && dinheiroCobreTotalVenda.value;
+}
+
+watch(dinheiroCobreTotalVenda, (cobreTotal) => {
+  if (!cobreTotal) return;
+
+  pagamentos.value.forEach((item) => {
+    if (item.forma !== 'DINHEIRO') {
+      item.valor = null;
+    }
+  });
+
+  qrPixLiberado.value = false;
+  dialogQrPix.value = false;
+});
 
 const valorPixInformado = computed(() => {
   const pagamentoPix = pagamentos.value.find((item) => item.forma === 'PIX');

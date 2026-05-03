@@ -306,7 +306,7 @@
                         input-class="text-right"
                         placeholder="0,00"
                         :label="`Valor em ${pagamento.label}`"
-                        :disable="deveDesabilitarFormaPagamento(pagamento.forma)"
+                        @update:model-value="onPagamentoChange(index)"
                       >
                         <template #prepend>
                           <span class="text-blue-7 text-caption">R$</span>
@@ -648,39 +648,59 @@ const totalVenda = computed(() =>
   Math.max(0, subtotalVenda.value - descontoCalculado.value + acrescimoCalculado.value),
 );
 
-const valorDinheiroInformado = computed(() => {
-  const pagamentoDinheiro = pagamentos.value.find((item) => item.forma === 'DINHEIRO');
-  return round2(Number(pagamentoDinheiro?.valor || 0));
-});
+function onPagamentoChange(indexEditado: number) {
+  const pagamento = pagamentos.value[indexEditado];
+  if (!pagamento) return;
 
-const totalVendaCentavos = computed(() => valorParaCentavos(totalVenda.value));
+  const valorInformado = round2(Number(pagamento.valor || 0));
 
-const valorDinheiroInformadoCentavos = computed(() =>
-  valorParaCentavos(valorDinheiroInformado.value),
-);
+  if (valorInformado < 0) {
+    pagamento.valor = null;
+    return;
+  }
 
-const dinheiroCobreTotalVenda = computed(() => {
-  return (
-    totalVendaCentavos.value > 0 && valorDinheiroInformadoCentavos.value >= totalVendaCentavos.value
-  );
-});
+  // Dinheiro pode exceder o total, pois o excedente vira troco.
+  // Ao alterar Dinheiro, não alteramos Cartão nem PIX.
+  if (pagamento.forma === 'DINHEIRO') {
+    return;
+  }
 
-function deveDesabilitarFormaPagamento(forma: FormaPagamento) {
-  return forma !== 'DINHEIRO' && dinheiroCobreTotalVenda.value;
+  // Cartão e PIX não podem ser digitados acima do faltante atual.
+  if (isFormaSemTroco(pagamento.forma)) {
+    validarLimiteFormaSemTroco(indexEditado);
+  }
 }
 
-watch(dinheiroCobreTotalVenda, (cobreTotal) => {
-  if (!cobreTotal) return;
+function validarLimiteFormaSemTroco(indexEditado: number) {
+  const pagamento = pagamentos.value[indexEditado];
+  if (!pagamento || !isFormaSemTroco(pagamento.forma)) return;
 
-  pagamentos.value.forEach((item) => {
-    if (item.forma !== 'DINHEIRO') {
-      item.valor = null;
-    }
-  });
+  const totalDinheiroInformado = pagamentos.value
+    .filter((item) => item.forma === 'DINHEIRO')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
 
-  qrPixLiberado.value = false;
-  dialogQrPix.value = false;
-});
+  const totalOutrasFormasSemTroco = pagamentos.value.reduce((acc, item, index) => {
+    if (index === indexEditado) return acc;
+    if (!isFormaSemTroco(item.forma)) return acc;
+
+    return acc + Number(item.valor || 0);
+  }, 0);
+
+  const limite = round2(
+    Math.max(0, totalVenda.value - totalDinheiroInformado - totalOutrasFormasSemTroco),
+  );
+
+  const valorInformado = round2(Number(pagamento.valor || 0));
+
+  if (valorInformado > limite) {
+    pagamento.valor = limite > 0 ? limite : null;
+
+    Notify.create({
+      type: 'warning',
+      message: `O valor do ${pagamento.label} não pode ser maior que o faltante de ${formatarMoeda(limite)}.`,
+    });
+  }
+}
 
 const valorPixInformado = computed(() => {
   const pagamentoPix = pagamentos.value.find((item) => item.forma === 'PIX');
@@ -689,7 +709,7 @@ const valorPixInformado = computed(() => {
 
 const totalOutrasFormasSemPix = computed(() => {
   const total = pagamentos.value
-    .filter((item) => item.forma !== 'PIX' && item.forma !== 'DINHEIRO')
+    .filter((item) => item.forma !== 'PIX')
     .reduce((acc, item) => acc + Number(item.valor || 0), 0);
 
   return round2(total);
@@ -1187,6 +1207,8 @@ async function finalizarVenda() {
     return;
   }
 
+  const totalVendaAtual = round2(Number(totalVenda.value || 0));
+
   const pagamentosPayload: PagamentoInformado[] = pagamentos.value
     .map((item) => ({
       forma: item.forma,
@@ -1202,27 +1224,25 @@ async function finalizarVenda() {
     return;
   }
 
-  let restante = round2(totalVenda.value);
+  const totalSemTrocoInformado = round2(
+    pagamentosPayload
+      .filter((item) => isFormaSemTroco(item.forma))
+      .reduce((acc, item) => acc + Number(item.valor || 0), 0),
+  );
 
-  const pagamentosSemTroco = pagamentosPayload.filter((item) => isFormaSemTroco(item.forma));
-
-  for (const item of pagamentosSemTroco) {
-    if (item.valor > restante) {
-      Notify.create({
-        type: 'warning',
-        message: `O valor do ${item.forma} não pode ser maior que o valor faltante de R$ ${restante.toFixed(2)}.`,
-      });
-      return;
-    }
-
-    restante = round2(Math.max(0, restante - item.valor));
+  if (totalSemTrocoInformado > totalVendaAtual) {
+    Notify.create({
+      type: 'warning',
+      message: `Cartão e PIX não podem superar o total da venda: ${formatarMoeda(totalVendaAtual)}.`,
+    });
+    return;
   }
 
-  const totalDinheiroInformado = pagamentosPayload
-    .filter((item) => item.forma === 'DINHEIRO')
-    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
+  const totalInformadoAtual = round2(
+    pagamentosPayload.reduce((acc, item) => acc + Number(item.valor || 0), 0),
+  );
 
-  if (round2(totalDinheiroInformado) < restante) {
+  if (totalInformadoAtual < totalVendaAtual) {
     Notify.create({
       type: 'warning',
       message: 'O total pago é menor que o total da venda',
@@ -1230,22 +1250,15 @@ async function finalizarVenda() {
     return;
   }
 
-  if (faltaPagar.value > 0) {
-    Notify.create({
-      type: 'warning',
-      message: 'O total pago é menor que o total da venda',
-    });
-    return;
-  }
   const itensComprovante = carrinho.value.map((item) => ({ ...item }));
   const pagamentosComprovante = pagamentosPayload.map((item) => ({ ...item }));
   const clienteNomeComprovante = nomeClienteFinal.value;
   const subtotalComprovante = Number(subtotalVenda.value || 0);
   const descontoComprovante = Number(descontoCalculado.value || 0);
   const acrescimoComprovante = Number(acrescimoCalculado.value || 0);
-  const totalComprovante = Number(totalVenda.value || 0);
-  const totalPagoComprovante = Number(totalPago.value || 0);
-  const trocoComprovante = Number(troco.value || 0);
+  const totalComprovante = totalVendaAtual;
+  const totalPagoComprovante = round2(Math.min(totalInformadoAtual, totalVendaAtual));
+  const trocoComprovante = round2(Math.max(0, totalInformadoAtual - totalVendaAtual));
   const dataVendaComprovante = new Date();
 
   const pagamentosFinanceiro: PagamentoInformado[] = pagamentosPayload

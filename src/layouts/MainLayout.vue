@@ -78,7 +78,7 @@
           <q-item-section avatar>
             <q-icon name="add_shopping_cart" />
           </q-item-section>
-          <q-item-section style="font-size: 16px;">Cadastrar Pedido</q-item-section>
+          <q-item-section style="font-size: 16px;">Novo Pedido</q-item-section>
         </q-item>
 
         <q-item clickable to="/pdv" active-class="menu-active">

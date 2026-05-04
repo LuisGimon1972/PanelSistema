@@ -321,24 +321,47 @@
             </div>
 
             <div class="col-8">
-                      <q-input
-                :ref="criarPagamentoRef(index)"
-                v-model.number="pagamento.valor"
-                type="number"
-                min="0"
-                step="0.01"
-                outlined
-                dense
-                class="sem-setas"
-                input-class="text-right"
-                placeholder="0,00"
-                :label="`Valor em ${pagamento.label}`"
-                @update:model-value="onPagamentoChange(index)"
-              >
-                <template #prepend>
-                  <span class="text-blue-7 text-caption">R$</span>
-                </template>
-</q-input>
+             <q-input
+  		:ref="criarPagamentoRef(index)"
+	  	v-model.number="pagamento.valor"
+		type="number"
+	  	min="0"
+  		step="0.01"
+  		outlined
+  		dense
+  		class="sem-setas"
+  		input-class="text-right"
+	  	placeholder="0,00"
+  		:label="`Valor em ${pagamento.label}`"
+  		:disable="
+    			pagamentos.some((outroPagamento, outroIndex) =>
+      			outroIndex !== index &&
+      			valorParaCentavos(outroPagamento.valor) >= totalPedidoCentavos
+			    )
+			  "
+	        @update:model-value="
+  	    	() => {
+      		onPagamentoChange(index);
+
+      		if (valorParaCentavos(pagamento.valor) >= totalPedidoCentavos) {
+        		pagamentos.forEach((outroPagamento, outroIndex) => {
+          	if (outroIndex !== index) {
+            		outroPagamento.valor = 0;
+          	}
+        	});
+
+        	if (pagamento.forma !== 'PIX') {
+          		qrPixLiberado = false;
+          	dialogQrPix = false;
+        	}
+      		}
+    		}
+  		"
+		>
+	       <template #prepend>
+    			<span class="text-blue-7 text-caption">R$</span>
+     	       </template>
+	 </q-input>
             </div>
           </div>
           <div v-if="mostrarQrCodePix" class="q-mt-md text-center">

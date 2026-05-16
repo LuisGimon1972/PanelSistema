@@ -294,42 +294,47 @@
                     </div>
 
                     <div class="col-8">
-               <q-input
-  :ref="criarPagamentoRef(index)"
-  v-model.number="pagamento.valor"
-  type="number"
-  min="0"
-  step="0.01"
-  outlined
-  dense
-  class="sem-setas"
-  input-class="text-right"
-  placeholder="0,00"
-  :label="`Valor em ${pagamento.label}`"
-  :disable="
-    pagamentos.some((outroPagamento, outroIndex) =>
-      outroIndex !== index &&
-      valorParaCentavos(Number(outroPagamento.valor || 0)) >= valorParaCentavos(totalVenda)
-    )
-  "
-  @update:model-value="
-    () => {
-      onPagamentoChange(index);
+                      <q-input
+                        :ref="criarPagamentoRef(index)"
+                        v-model.number="pagamento.valor"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        outlined
+                        dense
+                        class="sem-setas"
+                        input-class="text-right"
+                        placeholder="0,00"
+                        :label="`Valor em ${pagamento.label}`"
+                        :disable="
+                          pagamentos.some(
+                            (outroPagamento, outroIndex) =>
+                              outroIndex !== index &&
+                              valorParaCentavos(Number(outroPagamento.valor || 0)) >=
+                                valorParaCentavos(totalVenda),
+                          )
+                        "
+                        @update:model-value="
+                          () => {
+                            onPagamentoChange(index);
 
-      if (valorParaCentavos(Number(pagamento.valor || 0)) >= valorParaCentavos(totalVenda)) {
-        pagamentos.forEach((outroPagamento, outroIndex) => {
-          if (outroIndex !== index) {
-            outroPagamento.valor = 0;
-          }
-        });
-      }
-    }
-  "
->
-  <template #prepend>
-    <span class="text-blue-7 text-caption">R$</span>
-  </template>
-</q-input>
+                            if (
+                              valorParaCentavos(Number(pagamento.valor || 0)) >=
+                              valorParaCentavos(totalVenda)
+                            ) {
+                              pagamentos.forEach((outroPagamento, outroIndex) => {
+                                if (outroIndex !== index) {
+                                  outroPagamento.valor = 0;
+                                }
+                              });
+                            }
+                          }
+                        "
+                      >
+                        <template #prepend>
+                          <span class="text-blue-7 text-caption">R$</span>
+                        </template>
+                      </q-input>
                     </div>
                   </div>
 
@@ -400,7 +405,7 @@
                     icon="check"
                     label="Confirmar"
                     :loading="finalizando"
-                    :disable="!podeConfirmarFaturamento"
+                    :disable="!podeConfirmarFaturamento || !confirmacard"
                     @click="confirmarFaturamento"
                   />
                 </q-card-actions>
@@ -512,6 +517,7 @@ interface DadosComprovanteVenda {
 const busca = ref('');
 const finalizando = ref(false);
 const inputBusca = ref();
+const confirmacard = ref(true);
 
 const clientes = ref<Cliente[]>([]);
 const produtos = ref<Produto[]>([]);
@@ -717,6 +723,9 @@ function validarLimiteFormaSemTroco(indexEditado: number) {
       type: 'warning',
       message: `O valor do ${pagamento.label} não pode ser maior que o faltante de ${formatarMoeda(limite)}.`,
     });
+    confirmacard.value = false;
+  } else {
+    confirmacard.value = true;
   }
 }
 
@@ -988,8 +997,8 @@ function gerarHtmlComprovanteVenda(dados: DadosComprovanteVenda): string {
 
           <div class="centro">
             <div>Obrigado pela preferência</div>
-            <div style="margin-top: 10px; 
-            font-size: 9px; 
+            <div style="margin-top: 10px;
+            font-size: 9px;
             text-align: center;">
             Impressão: VendaFlow Gestão Comercial</div>
           </div>

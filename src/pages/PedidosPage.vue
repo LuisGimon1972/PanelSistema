@@ -321,47 +321,48 @@
             </div>
 
             <div class="col-8">
-             <q-input
-  		:ref="criarPagamentoRef(index)"
-	  	v-model.number="pagamento.valor"
-		type="number"
-	  	min="0"
-  		step="0.01"
-  		outlined
-  		dense
-  		class="sem-setas"
-  		input-class="text-right"
-	  	placeholder="0,00"
-  		:label="`Valor em ${pagamento.label}`"
-  		:disable="
-    			pagamentos.some((outroPagamento, outroIndex) =>
-      			outroIndex !== index &&
-      			valorParaCentavos(outroPagamento.valor) >= totalPedidoCentavos
-			    )
-			  "
-	        @update:model-value="
-  	    	() => {
-      		onPagamentoChange(index);
+              <q-input
+                :ref="criarPagamentoRef(index)"
+                v-model.number="pagamento.valor"
+                type="number"
+                min="0"
+                step="0.01"
+                outlined
+                dense
+                class="sem-setas"
+                input-class="text-right"
+                placeholder="0,00"
+                :label="`Valor em ${pagamento.label}`"
+                :disable="
+                  pagamentos.some(
+                    (outroPagamento, outroIndex) =>
+                      outroIndex !== index &&
+                      valorParaCentavos(outroPagamento.valor) >= totalPedidoCentavos,
+                  )
+                "
+                @update:model-value="
+                  () => {
+                    onPagamentoChange(index);
 
-      		if (valorParaCentavos(pagamento.valor) >= totalPedidoCentavos) {
-        		pagamentos.forEach((outroPagamento, outroIndex) => {
-          	if (outroIndex !== index) {
-            		outroPagamento.valor = 0;
-          	}
-        	});
+                    if (valorParaCentavos(pagamento.valor) >= totalPedidoCentavos) {
+                      pagamentos.forEach((outroPagamento, outroIndex) => {
+                        if (outroIndex !== index) {
+                          outroPagamento.valor = 0;
+                        }
+                      });
 
-        	if (pagamento.forma !== 'PIX') {
-          		qrPixLiberado = false;
-          	dialogQrPix = false;
-        	}
-      		}
-    		}
-  		"
-		>
-	       <template #prepend>
-    			<span class="text-blue-7 text-caption">R$</span>
-     	       </template>
-	 </q-input>
+                      if (pagamento.forma !== 'PIX') {
+                        qrPixLiberado = false;
+                        dialogQrPix = false;
+                      }
+                    }
+                  }
+                "
+              >
+                <template #prepend>
+                  <span class="text-blue-7 text-caption">R$</span>
+                </template>
+              </q-input>
             </div>
           </div>
           <div v-if="mostrarQrCodePix" class="q-mt-md text-center">
@@ -428,7 +429,7 @@
             icon="check"
             label="Confirmar"
             :loading="salvando"
-            :disable="!podeConfirmarFaturamento"
+            :disable="!podeConfirmarFaturamento || !validarcartao"
             @click="confirmarFaturamento"
           />
         </q-card-actions>
@@ -578,6 +579,7 @@ const statusOptions = [
 
 const statusPedido = ref<StatusPedido>('ABERTO');
 const origemPedido = ref<'PEDIDO' | 'PDV'>('PEDIDO');
+const validarcartao = ref(true);
 
 const salvando = ref(false);
 const finalizando = ref(false);
@@ -846,6 +848,9 @@ function validarLimiteFormaSemTroco(indexEditado: number) {
         centavosParaValor(limiteCentavos),
       )}.`,
     });
+    validarcartao.value = false;
+  } else {
+    validarcartao.value = true;
   }
 }
 

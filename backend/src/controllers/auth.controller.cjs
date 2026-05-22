@@ -122,7 +122,29 @@ async function login(req, res) {
   }
 }
 
+async function listarUsuarios(req, res) {
+  try {
+    const result = await pool.query(`
+      SELECT id, nome, email, senha
+      FROM usuarios
+      ORDER BY id ASC
+    `);
+
+    return res.json({
+      sucesso: true,
+      usuarios: result.rows,
+    });
+  } catch (err) {
+    console.error('Erro ao listar usuários:', err);
+
+    return res.status(500).json({
+      erro: 'Erro interno ao listar usuários',
+    });
+  }
+}
+
 module.exports = {
   registrar,
   login,
+  listarUsuarios,
 };

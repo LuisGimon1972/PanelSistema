@@ -45,6 +45,7 @@
               dense
               label="Buscar produto, pelo nome, id ou código de barras"
               @keyup.enter="buscarOuAdicionarProduto"
+              input-class="text-right text-h6 text-weight-bold"
             >
               <template #prepend>
                 <q-icon name="search" />
@@ -61,7 +62,7 @@
                   @click="adicionarProduto(produto)"
                 >
                   <q-item-section>
-                    <q-item-label>{{ produto.nome }}</q-item-label>
+                    <q-item-label>Cód: {{ produto.id }} - {{ produto.nome }}</q-item-label>
                     <q-item-label caption> Estoque: {{ produto.estoque }} </q-item-label>
                   </q-item-section>
 
@@ -1078,16 +1079,108 @@ async function buscarOuAdicionarProduto() {
 
   if (!termo) return;
 
+  // 👉 código de barras + quantidade
+  const match = termo.match(/^(\d+)\s*[\*xX]\s*(\d+)$/);
+
+  if (match) {
+    const codigo = match[1];
+    const quantidade = Number(match[2]);
+
+    if (!codigo || quantidade <= 0) {
+      beepErro.play();
+      return;
+    }
+
+    await adicionarPorCodigoComQuantidade(codigo, quantidade);
+
+    busca.value = '';
+    focarBusca();
+    return;
+  }
+
+  // 👉 fluxo normal (sem quantidade)
   const ehNumero = /^\d+$/.test(termo);
 
   if (!ehNumero) return;
 
   if (termo.length >= 6) {
-    await buscarPorCodigo(termo);
+    await buscarPorCodigo(termo); // código de barras normal
+  } else {
+    await buscarPorIdPro(Number(termo)); // ID
+  }
+}
+
+async function adicionarPorCodigoComQuantidade(codigo: string, quantidade: number) {
+  try {
+    let produto: Produto;
+
+    // 👉 código de barras (grande)
+    if (codigo.length >= 6) {
+      const { data } = await api.get(`/produtos/codigo/${codigo}`);
+      produto = data;
+    } else {
+      // 👉 ID pequeno
+      const { data } = await axios.get(`${API_URL}/produtos/${codigo}`);
+      produto = data;
+    }
+
+    adicionarProdutoComQuantidade(produto, quantidade);
+    tocarBeep();
+  } catch {
+    beepErro.play();
+    Notify.create({
+      type: 'negative',
+      message: 'Produto não encontrado',
+    });
+  }
+}
+
+function adicionarProdutoComQuantidade(produto: Produto, quantidade: number) {
+  if (produto.estoque <= 0) {
+    beepErro.play();
+    Notify.create({
+      type: 'warning',
+      message: `Produto sem estoque: ${produto.nome}`,
+    });
     return;
   }
 
-  await buscarPorIdPro(Number(termo));
+  const itemExistente = carrinho.value.find((item) => item.produto_id === produto.id);
+
+  if (itemExistente) {
+    const novaQuantidade = itemExistente.quantidade + quantidade;
+
+    if (novaQuantidade > itemExistente.estoqueDisponivel) {
+      Notify.create({
+        type: 'warning',
+        message: `Estoque insuficiente para ${produto.nome}`,
+      });
+      return;
+    }
+
+    itemExistente.quantidade = novaQuantidade;
+    itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
+  } else {
+    if (quantidade > produto.estoque) {
+      Notify.create({
+        type: 'warning',
+        message: `Estoque insuficiente para ${produto.nome}`,
+      });
+      return;
+    }
+
+    carrinho.value.push({
+      produto_id: produto.id,
+      nome: produto.nome,
+      preco: Number(produto.preco),
+      quantidade,
+      subtotal: Number(produto.preco) * quantidade,
+      foto: produto.foto,
+      estoqueDisponivel: Number(produto.estoque),
+    });
+
+    rolarCarrinhoParaVisualizarUltimoItem();
+  }
 }
 
 async function buscarPorIdPro(id: number) {

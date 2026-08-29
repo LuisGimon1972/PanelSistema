@@ -184,7 +184,12 @@
                   v-model.number="descontoValor"
                   type="number"
                   min="0"
-                  :max="descontoTipo === 'percentual' ? 100 : undefined"
+                  :max="descontoTipo === 'percentual' ? 99 : undefined"
+                  @update:model-value="
+                    (val) => {
+                      if (descontoTipo === 'percentual' && Number(val) >= 100) descontoValor = 99;
+                    }
+                  "
                   outlined
                   label="Desconto"
                   dense
@@ -192,9 +197,16 @@
                   <template #prepend>
                     <q-btn-toggle
                       v-model="descontoTipo"
+                      @update:model-value="
+                        (tipo) => {
+                          if (tipo === 'percentual' && Number(descontoValor) >= 100)
+                            descontoValor = 99;
+                        }
+                      "
                       no-caps
                       unelevated
                       dense
+                      padding="2px 8px"
                       toggle-color="primary"
                       color="white"
                       text-color="primary"

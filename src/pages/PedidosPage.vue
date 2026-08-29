@@ -191,6 +191,11 @@
                   type="number"
                   min="0"
                   :max="descontoTipo === 'percentual' ? 99 : undefined"
+                  @update:model-value="
+                    (val) => {
+                      if (descontoTipo === 'percentual' && Number(val) >= 100) descontoValor = 99;
+                    }
+                  "
                   outlined
                   label="Desc."
                   dense
@@ -198,6 +203,12 @@
                   <template #prepend>
                     <q-btn-toggle
                       v-model="descontoTipo"
+                      @update:model-value="
+                        (tipo) => {
+                          if (tipo === 'percentual' && Number(descontoValor) >= 100)
+                            descontoValor = 99;
+                        }
+                      "
                       no-caps
                       unelevated
                       dense
